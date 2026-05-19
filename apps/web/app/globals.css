@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FAFAF7;
+  --bg-card: #FFFFFF;
+  --bg-sub: #F2F2EC;
+  --ink: #0F0F0E;
+  --ink-soft: #54544F;
+  --ink-mute: #8A8A82;
+  --line: #E6E6DE;
+  --violet: #7C3AED;
+  --violet-deep: #5B21B6;
+  --violet-soft: #EDE4FE;
+  --lime: #C6F24E;
+  --lime-deep: #A9D936;
+  --danger: #E25C3A;
+  --warn: #D88934;
+  --radius-sm: 2px;
+  --radius: 4px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-display), system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* Interactive card — brutalist shadow pattern */
+.card-interactive {
+  box-shadow: 6px 6px 0 var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.card-interactive:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--violet);
+}
+
+/* Severity colour tokens */
+.severity-critical { color: var(--danger); }
+.severity-medium   { color: var(--warn); }
+.severity-low      { color: var(--ink-soft); }
+.severity-info     { color: var(--violet); }
+.severity-pass     { color: var(--lime-deep); }
+
+/* Grade colour tokens */
+.grade-a-plus, .grade-a { color: var(--lime-deep); }
+.grade-b-plus, .grade-b { color: var(--violet); }
+.grade-c-plus, .grade-c { color: var(--warn); }
+.grade-d, .grade-f      { color: var(--danger); }
