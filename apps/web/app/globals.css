@@ -15,10 +15,17 @@
   --violet-soft: #EDE4FE;
   --lime: #C6F24E;
   --lime-deep: #A9D936;
+  --bg-deep: #ECECE3;
   --danger: #E25C3A;
+  --danger-soft: #FBE3DA;
   --warn: #D88934;
+  --warn-soft: #F8E4CA;
+  --lime-soft: #EEF8C7;
+  --line-strong: #D2D2C7;
   --radius-sm: 2px;
   --radius: 4px;
+  --shadow-brut: 6px 6px 0 var(--ink);
+  --shadow-brut-sm: 4px 4px 0 var(--ink);
 }
 
 * {

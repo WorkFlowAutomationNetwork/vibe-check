@@ -412,3 +412,9 @@ Build order:
 12. Integrations (Vercel webhook, GitHub OAuth)
 
 When working on a feature, read the corresponding HTML reference file in `/design/` first before writing any component code.
+Worth adding to the CLAUDE.md too — just a note that Superpowers is installed and the brainstorming → plan → subagent flow should be used for any new feature work.
+
+
+
+
+
