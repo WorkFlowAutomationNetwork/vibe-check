@@ -1,0 +1,17 @@
+{
+  "skillOverrides": {
+    "firecrawl": "off",
+    "firecrawl-agent": "off",
+    "firecrawl-build-interact": "off",
+    "firecrawl-build-onboarding": "off",
+    "firecrawl-build-scrape": "off",
+    "firecrawl-build-search": "off",
+    "firecrawl-crawl": "off",
+    "firecrawl-download": "off",
+    "firecrawl-interact": "off",
+    "firecrawl-map": "off",
+    "firecrawl-parse": "off",
+    "firecrawl-scrape": "off",
+    "firecrawl-search": "off"
+  }
+}

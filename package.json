@@ -1,0 +1,8 @@
+{
+  "name": "vibe-check",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

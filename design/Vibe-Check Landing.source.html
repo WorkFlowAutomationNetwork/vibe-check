@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Vibe-Check — Security audit for vibe-coded apps</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --bg-card: #FFFFFF;
+    --bg-sub: #F2F2EC;
+    --ink: #0F0F0E;
+    --ink-soft: #54544F;
+    --ink-mute: #8A8A82;
+    --line: #E6E6DE;
+    --line-strong: #1A1A18;
+    --violet: #7C3AED;
+    --violet-deep: #5B21B6;
+    --violet-soft: #EDE4FE;
+    --lime: #C6F24E;
+    --lime-deep: #A9D936;
+    --danger: #E25C3A;
+    --radius-sm: 2px;
+    --radius: 4px;
+    --radius-lg: 6px;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  body { font-size: 16px; line-height: 1.5; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  ::selection { background: var(--lime); color: var(--ink); }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+
+  /* ====== NAV ====== */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(250,250,247,0.85);
+    backdrop-filter: saturate(1.2) blur(10px);
+    -webkit-backdrop-filter: saturate(1.2) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 72px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -0.01em;
+  }
+  .logo-mark {
+    width: 28px; height: 28px; background: var(--ink); color: var(--lime);
+    display: grid; place-items: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: 18px;
+    position: relative;
+  }
+  .logo-mark .pulse {
+    position: absolute; inset: 0;
+    border: 2px solid var(--lime); opacity: 0; pointer-events: none;
+    animation: pulse 2.6s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .nav-links { display: flex; gap: 32px; align-items: center; font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+  .nav-links a { transition: color 0.15s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { display: flex; align-items: center; gap: 20px; }
+  .btn-primary {
+    background: var(--ink); color: var(--bg);
+    font-family: var(--font-display); font-weight: 600; font-size: 14px;
+    padding: 11px 18px; border-radius: var(--radius);
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); background: var(--violet); }
+  .btn-primary .arr { transition: transform 0.15s; }
+  .btn-primary:hover .arr { transform: translateX(2px); }
+  .btn-ghost {
+    font-family: var(--font-display); font-weight: 500; font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .btn-ghost:hover { color: var(--ink); }
+
+  /* ====== HERO ====== */
+  .hero {
+    padding: 96px 0 80px;
+    position: relative;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);
+    background: var(--bg-card); border: 1px solid var(--line);
+    padding: 7px 12px; border-radius: 100px;
+    margin-bottom: 32px;
+  }
+  .hero-eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--lime-deep);
+    box-shadow: 0 0 0 4px rgba(198,242,78,0.3);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(44px, 6.2vw, 84px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    margin: 0 0 28px;
+    max-width: 14ch;
+    text-wrap: balance;
+  }
+  .hero h1 .accent { color: var(--violet); }
+  .hero h1 .strike {
+    position: relative; display: inline-block;
+  }
+  .hero h1 .strike::after {
+    content: ''; position: absolute; left: -2%; right: -2%; top: 56%;
+    height: 0.08em; background: var(--ink);
+    transform: rotate(-2deg);
+  }
+  .hero p.sub {
+    font-size: 20px; color: var(--ink-soft); max-width: 52ch;
+    margin: 0 0 40px; line-height: 1.45;
+  }
+
+  /* scan bar */
+  .scan {
+    max-width: 720px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    padding: 8px;
+    display: flex; align-items: stretch; gap: 8px;
+    box-shadow: 6px 6px 0 var(--ink);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .scan:focus-within { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 var(--violet); }
+  .scan .prefix {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 4px 0 14px;
+    font-family: var(--font-mono); font-size: 13px; color: var(--ink-mute);
+    border-right: 1px solid var(--line);
+    user-select: none;
+  }
+  .scan input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    font-family: var(--font-mono); font-size: 16px;
+    padding: 0 4px;
+    color: var(--ink);
+  }
+  .scan input::placeholder { color: var(--ink-mute); }
+  .scan-btn {
+    background: var(--violet); color: white;
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    padding: 14px 22px; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: background 0.15s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .scan-btn:hover { background: var(--violet-deep); }
+  .scan-btn:disabled { background: var(--ink-mute); cursor: progress; }
+  .scan-note {
+    margin-top: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-mute);
+    display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  .scan-note span { display: inline-flex; gap: 6px; align-items: center; }
+
+  /* scan progress */
+  .scan-progress {
+    margin-top: 20px; max-width: 720px;
+    background: var(--ink); color: var(--bg);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    font-family: var(--font-mono); font-size: 13px;
+    overflow: hidden;
+  }
+  .scan-progress .header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .scan-progress .target {
+    display: inline-flex; gap: 8px; align-items: center; color: #cfcfc9;
+  }
+  .scan-progress .target b { color: white; }
+  .scan-progress .pct { font-weight: 700; color: var(--lime); }
+  .scan-progress .bar {
+    height: 6px; background: rgba(255,255,255,0.1); border-radius: 100px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .scan-progress .bar-fill {
+    height: 100%; background: var(--lime); width: 0%;
+    transition: width 0.3s ease;
+  }
+  .scan-progress .log {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; gap: 6px;
+  }
+  .scan-progress .log li {
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s, transform 0.3s;
+    color: #cfcfc9;
+  }
+  .scan-progress .log li.on { opacity: 1; transform: none; }
+  .scan-progress .log li.done .stat { color: var(--lime); }
+  .scan-progress .log li.warn .stat { color: #FFB668; }
+  .scan-progress .log li.fail .stat { color: #FF8067; }
+  .scan-progress .log .stat { font-weight: 700; flex-shrink: 0; width: 9ch; }
+  .scan-progress .log .label { flex: 1; }
+  .scan-progress .log .ms { color: #74746f; }
+
+  /* scan complete card */
+  .scan-result {
+    margin-top: 20px; max-width: 720px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .scan-result .top {
+    padding: 22px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--violet-soft) 0%, transparent 100%);
+  }
+  .scan-result .grade {
+    font-family: var(--font-display); font-size: 56px; font-weight: 700; line-height: 1;
+    color: var(--violet);
+  }
+  .scan-result .top-text h3 {
+    font-family: var(--font-display); font-size: 17px; margin: 0 0 4px;
+  }
+  .scan-result .top-text p {
+    margin: 0; font-size: 14px; color: var(--ink-soft);
+  }
+  .scan-result .findings {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 0;
+  }
+  .scan-result .findings > div {
+    padding: 16px 24px;
+    border-right: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .scan-result .findings > div:last-child { border-right: 0; }
+  .scan-result .findings .n {
+    font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--ink);
+    display: block; margin-bottom: 4px;
+  }
+  .scan-result .findings .n.danger { color: var(--danger); }
+  .scan-result .findings .n.warn { color: #D88934; }
+  .scan-result .findings .n.ok { color: var(--lime-deep); }
+  .scan-result .footer {
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-sub); font-size: 13px;
+  }
+  .scan-result .footer a { font-family: var(--font-display); font-weight: 600; color: var(--violet); }
+  .scan-result .footer a:hover { text-decoration: underline; }
+
+  .hero-side-tag {
+    position: absolute;
+    right: 32px; top: 120px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-mute);
+    text-align: right;
+    line-height: 1.6;
+    display: none;
+  }
+  @media (min-width: 1100px) {
+    .hero-side-tag { display: block; }
+  }
+  .hero-side-tag .arrow { display: inline-block; margin-right: 4px; }
+
+  /* ====== TRUST STRIP ====== */
+  .trust {
+    padding: 56px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .trust-line {
+    font-family: var(--font-display); font-weight: 500; font-size: 18px;
+    color: var(--ink); margin: 0 0 28px; max-width: 60ch;
+    letter-spacing: -0.01em;
+  }
+  .trust-line em { font-style: normal; background: var(--lime); padding: 0 6px; }
+  .pills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--ink); background: var(--bg-card);
+    padding: 9px 14px; border-radius: 100px;
+    font-family: var(--font-mono); font-size: 12px;
+    transition: transform 0.15s;
+  }
+  .pill:hover { transform: translateY(-2px); }
+  .pill b { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+  .pill .pillIcon {
+    width: 16px; height: 16px; background: var(--ink); color: var(--lime);
+    display: grid; place-items: center; font-size: 10px; font-weight: 700;
+  }
+
+  /* ====== WHAT WE CHECK ====== */
+  section.block { padding: 112px 0; }
+  .block-head {
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 60px;
+    margin-bottom: 56px; align-items: end;
+  }
+  .label-mono {
+    font-family: var(--font-mono); font-size: 12px; color: var(--violet);
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-bottom: 18px;
+  }
+  .label-mono::before {
+    content: ''; display: inline-block; width: 22px; height: 1px; background: var(--violet);
+  }
+  h2 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(34px, 4.4vw, 56px); line-height: 1; letter-spacing: -0.03em;
+    margin: 0; text-wrap: balance;
+  }
+  .block-head p {
+    margin: 0; color: var(--ink-soft); font-size: 17px; max-width: 44ch; padding-bottom: 6px;
+  }
+
+  .check-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+    gap: 1px;
+  }
+  .check-card {
+    background: var(--bg-card);
+    padding: 32px 28px 36px;
+    display: flex; flex-direction: column; gap: 16px;
+    transition: background 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  .check-card:hover { background: var(--bg-sub); }
+  .check-card .ico {
+    width: 44px; height: 44px;
+    background: var(--ink); color: var(--lime);
+    display: grid; place-items: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: 18px;
+    border-radius: var(--radius-sm);
+  }
+  .check-card.ai .ico { background: var(--violet); color: white; }
+  .check-card h3 {
+    font-family: var(--font-display); font-weight: 700; font-size: 19px;
+    margin: 0; letter-spacing: -0.01em;
+  }
+  .check-card p {
+    margin: 0; color: var(--ink-soft); font-size: 14.5px; line-height: 1.5;
+  }
+  .check-card .tag {
+    position: absolute; top: 18px; right: 18px;
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--violet); background: var(--violet-soft);
+    padding: 3px 7px; border-radius: 100px;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+  }
+  .check-card .more {
+    margin-top: 8px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-mute);
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+  .check-card .more span { display: inline-flex; align-items: center; gap: 4px; }
+  .check-card .more span::before { content: '·'; color: var(--ink-mute); }
+
+  /* ====== HOW IT WORKS ====== */
+  .steps {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    position: relative;
+  }
+  .step {
+    padding: 36px 28px 32px;
+    background: var(--bg-card); border: 1px solid var(--ink);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .step:hover { transform: translateY(-4px); box-shadow: 6px 6px 0 var(--ink); }
+  .step .num {
+    font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+    color: var(--violet); margin-bottom: 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .step .num .dotline { flex: 1; height: 1px; background: var(--line); margin-left: 14px; }
+  .step h3 {
+    font-family: var(--font-display); font-weight: 700; font-size: 24px;
+    margin: 0 0 12px; letter-spacing: -0.015em; line-height: 1.1;
+  }
+  .step p { margin: 0 0 24px; color: var(--ink-soft); font-size: 15px; }
+  .step .demo {
+    background: var(--bg-sub); border-radius: var(--radius-sm);
+    padding: 14px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-soft);
+    min-height: 96px;
+  }
+  .step .demo .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .step .demo .row b { color: var(--ink); }
+  .step .demo .row .ok { color: var(--lime-deep); font-weight: 700; }
+  .step .demo .row .bad { color: var(--danger); font-weight: 700; }
+  .step .demo .row .pending { color: var(--ink-mute); }
+  .step .demo .input-mock {
+    background: var(--bg-card); border: 1px solid var(--line); padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    border-radius: 2px;
+  }
+  .step .demo .input-mock .blink { width: 1px; height: 12px; background: var(--ink); animation: blink2 1s infinite; }
+  @keyframes blink2 { 50% { opacity: 0; } }
+
+  /* ====== PRICING ====== */
+  .pricing {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--ink);
+    align-items: stretch;
+  }
+  .tier {
+    background: var(--bg-card);
+    padding: 36px 32px 32px;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--ink);
+    position: relative;
+  }
+  .tier:last-child { border-right: 0; }
+  .tier.highlight {
+    background: var(--ink); color: var(--bg);
+    transform: scale(1.02);
+    z-index: 2;
+    box-shadow: 0 24px 60px -20px rgba(124,58,237,0.45);
+  }
+  .tier-name {
+    font-family: var(--font-display); font-weight: 700; font-size: 14px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-soft); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tier.highlight .tier-name { color: var(--lime); }
+  .tier-name .badge-best {
+    font-family: var(--font-mono); font-size: 10px;
+    background: var(--lime); color: var(--ink);
+    padding: 3px 7px; letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .tier-price {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 56px; letter-spacing: -0.03em; line-height: 1;
+    margin-bottom: 8px;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .tier-price .per {
+    font-size: 16px; color: var(--ink-soft); font-weight: 500;
+  }
+  .tier.highlight .tier-price .per { color: #b5b5ad; }
+  .tier-sub {
+    font-size: 14px; color: var(--ink-soft); margin: 0 0 28px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 24px;
+  }
+  .tier.highlight .tier-sub { color: #b5b5ad; border-color: rgba(255,255,255,0.12); }
+  .tier ul {
+    list-style: none; padding: 0; margin: 0 0 32px;
+    display: grid; gap: 12px;
+    font-size: 14.5px;
+  }
+  .tier ul li {
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .tier ul li::before {
+    content: '✓'; color: var(--violet); font-weight: 700;
+    margin-top: 1px; flex-shrink: 0;
+    font-family: var(--font-mono);
+  }
+  .tier.highlight ul li::before { color: var(--lime); }
+  .tier-cta {
+    margin-top: auto;
+    background: var(--ink); color: var(--bg);
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    padding: 14px 18px; border-radius: var(--radius-sm);
+    text-align: center;
+    transition: background 0.15s;
+  }
+  .tier:not(.highlight) .tier-cta:hover { background: var(--violet); }
+  .tier.highlight .tier-cta { background: var(--lime); color: var(--ink); }
+  .tier.highlight .tier-cta:hover { background: white; }
+
+  /* ====== BADGE PREVIEW ====== */
+  .badge-section {
+    background: var(--bg-sub);
+    padding: 112px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .badge-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+    align-items: center;
+  }
+  .badge-grid .copy h2 { margin-bottom: 20px; }
+  .badge-grid .copy p { font-size: 17px; color: var(--ink-soft); max-width: 40ch; margin: 0 0 28px; }
+
+  .vibe-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: white; border: 1.5px solid var(--ink);
+    padding: 8px 14px 8px 8px; border-radius: 100px;
+    font-family: var(--font-display); font-weight: 600; font-size: 13px;
+    color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    transition: transform 0.15s;
+  }
+  .vibe-badge:hover { transform: rotate(-2deg) scale(1.04); }
+  .vibe-badge .badge-mark {
+    width: 22px; height: 22px;
+    background: var(--violet); color: white;
+    display: grid; place-items: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+    border-radius: 50%;
+  }
+  .vibe-badge .v-meta {
+    font-family: var(--font-mono); font-weight: 500; color: var(--ink-mute); font-size: 11px;
+  }
+
+  .mock-site {
+    background: white; border: 1px solid var(--line);
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.25);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transform: rotate(-1.2deg);
+  }
+  .mock-bar {
+    height: 32px; background: var(--bg-sub); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px;
+  }
+  .mock-bar .lights { display: flex; gap: 6px; }
+  .mock-bar .lights span { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .mock-bar .url {
+    flex: 1; background: white; border: 1px solid var(--line);
+    height: 20px; margin-left: 14px;
+    border-radius: 100px;
+    font-family: var(--font-mono); font-size: 10px;
+    display: flex; align-items: center; padding: 0 10px;
+    color: var(--ink-mute);
+  }
+  .mock-body { padding: 32px; min-height: 280px; position: relative; }
+  .mock-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px;
+  }
+  .mock-nav .brand {
+    font-family: var(--font-display); font-weight: 700; font-size: 14px;
+  }
+  .mock-nav .links {
+    display: flex; gap: 16px;
+    font-family: var(--font-display); font-size: 12px; color: var(--ink-soft);
+  }
+  .mock-nav .links span:last-child {
+    background: var(--ink); color: white; padding: 4px 10px; border-radius: 3px;
+  }
+  .mock-content h4 {
+    font-family: var(--font-display); font-weight: 700; font-size: 28px;
+    margin: 0 0 14px; line-height: 1.05; letter-spacing: -0.02em; max-width: 14ch;
+  }
+  .mock-content p {
+    font-size: 12px; color: var(--ink-soft); max-width: 38ch; margin: 0 0 20px;
+  }
+  .mock-actions { display: flex; gap: 8px; }
+  .mock-actions .ba {
+    height: 28px; background: var(--ink); color: white;
+    font-family: var(--font-display); font-size: 11px; font-weight: 600;
+    padding: 0 14px; display: inline-flex; align-items: center;
+    border-radius: 2px;
+  }
+  .mock-actions .bb {
+    height: 28px; background: white; color: var(--ink);
+    font-family: var(--font-display); font-size: 11px; font-weight: 600;
+    padding: 0 14px; display: inline-flex; align-items: center;
+    border: 1px solid var(--ink); border-radius: 2px;
+  }
+  .badge-on-site {
+    position: absolute; right: 24px; bottom: 24px;
+    transform: rotate(2deg);
+    cursor: grab;
+  }
+
+  /* ====== CTA FOOTER ====== */
+  .cta-final {
+    padding: 132px 0 80px;
+    text-align: center;
+  }
+  .cta-final h2 {
+    margin: 0 auto 16px;
+    max-width: 16ch;
+  }
+  .cta-final p {
+    color: var(--ink-soft); font-size: 18px; margin: 0 auto 40px; max-width: 48ch;
+  }
+  .cta-final .scan { margin: 0 auto; }
+  .cta-final .scan-note { justify-content: center; }
+
+  /* ====== FOOTER ====== */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 0;
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-mute);
+  }
+  footer .row {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  footer .row .links { display: flex; gap: 18px; }
+
+  /* ====== MISC ====== */
+  .marquee-wrap {
+    margin-top: 24px;
+    overflow: hidden;
+    border-top: 1px dashed var(--line);
+    border-bottom: 1px dashed var(--line);
+    padding: 12px 0;
+  }
+  .marquee {
+    display: flex; gap: 36px;
+    animation: scroll 38s linear infinite;
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-mute);
+    white-space: nowrap;
+  }
+  .marquee span { display: inline-flex; gap: 8px; align-items: center; }
+  .marquee span::after { content: '×'; color: var(--violet); margin-left: 24px; }
+  @keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @media (max-width: 900px) {
+    .block-head, .check-grid, .steps, .pricing, .badge-grid { grid-template-columns: 1fr; }
+    .tier { border-right: 0; border-bottom: 1px solid var(--ink); }
+    .tier:last-child { border-bottom: 0; }
+    .tier.highlight { transform: none; }
+    .nav-links { display: none; }
+    .hero { padding-top: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<template id="__bundler_thumbnail" data-bg-color="#FAFAF7">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#FAFAF7"/>
+    <rect x="450" y="280" width="300" height="240" fill="#0F0F0E"/>
+    <text x="600" y="445" text-anchor="middle" font-family="ui-monospace, monospace" font-size="180" font-weight="700" fill="#C6F24E">✓</text>
+    <rect x="450" y="540" width="300" height="6" fill="#7C3AED"/>
+  </svg>
+</template>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-mark">✓<span class="pulse"></span></div>
+      <span>Vibe-Check</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#">Sign in</a>
+    </div>
+    <div class="nav-cta">
+      <a href="#hero-scan" class="btn-primary">Run free scan <span class="arr">→</span></a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-eyebrow"><span class="dot"></span> Scanning live · 2,431 sites checked this week</div>
+    <h1>Your app passed the <span class="strike">vibe check</span>.<br/>But did it pass a <span class="accent">security check</span>?</h1>
+    <p class="sub">Shipped something with Claude, Cursor, or v0 at 2am? We probe the things you probably forgot about. Free scan in 60 seconds, no account.</p>
+
+    <form class="scan" id="scan-form" onsubmit="return startScan(event, 'hero')">
+      <div class="prefix"><span>https://</span></div>
+      <input id="scan-url" type="text" placeholder="my-cool-side-project.vercel.app" autocomplete="off" spellcheck="false" />
+      <button class="scan-btn" id="scan-go" type="submit">Scan now <span>→</span></button>
+    </form>
+    <div class="scan-note">
+      <span>◯ Free scan takes ~60 seconds</span>
+      <span>◯ No account, no card, no Slack DM</span>
+      <span>◯ Read-only · we don't touch your data</span>
+    </div>
+
+    <div id="scan-stage-hero"></div>
+  </div>
+
+  <div class="hero-side-tag">
+    <div><span class="arrow">↘</span> built for the<br/>"ship first, ask later"<br/>generation</div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section class="trust">
+  <div class="container">
+    <p class="trust-line">Built for the generation that <em>ships first</em> and asks questions later.</p>
+    <div class="pills">
+      <div class="pill"><span class="pillIcon">↑</span><b>2,431</b> scans run this week</div>
+      <div class="pill"><span class="pillIcon">!</span> avg <b>6.2</b> vulnerabilities found</div>
+      <div class="pill"><span class="pillIcon">~</span> takes <b>60s</b> end-to-end</div>
+      <div class="pill"><span class="pillIcon">$</span> from <b>$0</b>, no card needed</div>
+    </div>
+
+    <div class="marquee-wrap">
+      <div class="marquee">
+        <span>vercel deploys</span><span>next.js apps</span><span>supabase backends</span><span>stripe checkouts</span><span>clerk auth</span><span>railway services</span><span>openai wrappers</span><span>anthropic agents</span><span>fly.io edges</span><span>cloudflare workers</span>
+        <span>vercel deploys</span><span>next.js apps</span><span>supabase backends</span><span>stripe checkouts</span><span>clerk auth</span><span>railway services</span><span>openai wrappers</span><span>anthropic agents</span><span>fly.io edges</span><span>cloudflare workers</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT WE CHECK -->
+<section class="block" id="checks">
+  <div class="container">
+    <div class="block-head">
+      <div>
+        <div class="label-mono">What we check</div>
+        <h2>The boring stuff your AI didn't think about.</h2>
+      </div>
+      <p>Six categories, ~180 individual probes. Most apps fail at least four of them on the first scan. That's fine — we tell you exactly which ones, in plain English, with fix priority.</p>
+    </div>
+
+    <div class="check-grid">
+      <div class="check-card">
+        <div class="ico">SSL</div>
+        <h3>SSL &amp; security headers</h3>
+        <p>HSTS, CSP, X-Frame-Options, the alphabet soup that decides whether a stranger can iframe your login screen.</p>
+        <div class="more"><span>strict-transport-security</span><span>content-security-policy</span></div>
+      </div>
+      <div class="check-card">
+        <div class="ico">⚿</div>
+        <h3>Auth &amp; access control</h3>
+        <p>Are your /admin routes actually protected, or just hidden? We try to walk in. You'd be shocked how often it works.</p>
+        <div class="more"><span>route guards</span><span>IDOR</span><span>cookies</span></div>
+      </div>
+      <div class="check-card ai">
+        <div class="ico">AI</div>
+        <span class="tag">For AI apps</span>
+        <h3>Prompt injection</h3>
+        <p>Your system prompt is currently one clever DM away from leaking. We try ~40 known jailbreaks against your wrapper.</p>
+        <div class="more"><span>system prompt leak</span><span>tool abuse</span></div>
+      </div>
+      <div class="check-card">
+        <div class="ico">/&gt;</div>
+        <h3>Exposed endpoints</h3>
+        <p>That debug route you left on. The unauthenticated /api/users. The .env in /public. We find them so attackers don't.</p>
+        <div class="more"><span>/api/*</span><span>/.well-known</span><span>/_next</span></div>
+      </div>
+      <div class="check-card">
+        <div class="ico">{ }</div>
+        <h3>Dependency CVEs</h3>
+        <p>That npm package Cursor installed three weeks ago has a CVE now. We cross-check your bundle against the live CVE feed.</p>
+        <div class="more"><span>npm</span><span>pypi</span><span>cargo</span></div>
+      </div>
+      <div class="check-card">
+        <div class="ico">⚙</div>
+        <h3>Misconfigurations</h3>
+        <p>Public S3 buckets. CORS set to <code style="font-family:var(--font-mono);font-size:12px;background:var(--bg-sub);padding:1px 4px;">*</code>. Stripe test keys in production. The usual suspects, automated.</p>
+        <div class="more"><span>cors</span><span>secrets</span><span>cloud</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="block" id="how" style="padding-top:0;">
+  <div class="container">
+    <div class="block-head">
+      <div>
+        <div class="label-mono">How it works</div>
+        <h2>Three steps. No setup. No SDK to install.</h2>
+      </div>
+      <p>You give us a URL. We do the rest. If you can paste a link, you can run a security audit.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="num">STEP 01 <span class="dotline"></span></div>
+        <h3>Paste your URL.</h3>
+        <p>Verify ownership with a single DNS TXT record or a meta tag. Takes about 90 seconds, only required for active scans.</p>
+        <div class="demo">
+          <div class="input-mock">
+            <span style="color:var(--ink-mute);">https://</span>
+            <span style="color:var(--ink);">my-app.com</span>
+            <span class="blink"></span>
+          </div>
+          <div class="row" style="margin-top:10px;"><span>domain verified</span><span class="ok">✓ OK</span></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">STEP 02 <span class="dotline"></span></div>
+        <h3>We probe, test, simulate.</h3>
+        <p>180 checks across six categories. Active mode tries known exploits on your routes — read-only, never destructive.</p>
+        <div class="demo">
+          <div class="row"><b>tls/hsts</b><span class="ok">PASS</span></div>
+          <div class="row"><b>csp policy</b><span class="bad">FAIL</span></div>
+          <div class="row"><b>auth bypass</b><span class="bad">FAIL</span></div>
+          <div class="row"><b>cve scan</b><span class="ok">PASS</span></div>
+          <div class="row"><b>prompt inject</b><span class="pending">running…</span></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">STEP 03 <span class="dotline"></span></div>
+        <h3>Get a prioritized fix list.</h3>
+        <p>Each issue is rated by severity and reachability. We tell you what to fix first and copy-paste the exact code or config.</p>
+        <div class="demo">
+          <div class="row"><span style="color:var(--danger);font-weight:700;">P0</span><span><b>Public admin route</b></span></div>
+          <div class="row"><span style="color:#D88934;font-weight:700;">P1</span><span><b>Missing CSP header</b></span></div>
+          <div class="row"><span style="color:#D88934;font-weight:700;">P1</span><span><b>Outdated next-auth</b></span></div>
+          <div class="row"><span style="color:var(--ink-mute);font-weight:700;">P2</span><span><b>X-Frame missing</b></span></div>
+          <div class="row"><span style="color:var(--ink-mute);font-weight:700;">P3</span><span><b>Server header leaks</b></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="block" id="pricing" style="padding-top:0;">
+  <div class="container">
+    <div class="block-head">
+      <div>
+        <div class="label-mono">Pricing</div>
+        <h2>One-off audit, or always-on. Your call.</h2>
+      </div>
+      <p>Free scan is genuinely free, forever. Pay only if you want active probes, a public badge, or continuous monitoring on every deploy.</p>
+    </div>
+
+    <div class="pricing">
+      <div class="tier">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">$0</div>
+        <p class="tier-sub">Passive scan, basic report. Good enough to know if you're actually in trouble.</p>
+        <ul>
+          <li>Passive HTTP &amp; DNS analysis</li>
+          <li>Top 25 vulnerability checks</li>
+          <li>1 URL</li>
+          <li>Plain-text report (web only)</li>
+          <li>No badge, no PDF, no monitoring</li>
+        </ul>
+        <a href="#hero-scan" class="tier-cta">Run free scan →</a>
+      </div>
+
+      <div class="tier highlight">
+        <div class="tier-name" style="color:var(--lime);">One-off <span class="badge-best">most picked</span></div>
+        <div class="tier-price">$9<span class="per">/ scan</span></div>
+        <p class="tier-sub">Full active audit. The "I'm launching Tuesday and want to be sure" tier.</p>
+        <ul>
+          <li>All 180 checks, active mode</li>
+          <li>Shareable HTML report + PDF export</li>
+          <li>"Vibe-Checked ✓" badge, valid 30 days</li>
+          <li>Re-run for 30 days, free</li>
+          <li>1 URL, expires after scan</li>
+        </ul>
+        <a href="#" class="tier-cta">Buy a scan →</a>
+      </div>
+
+      <div class="tier">
+        <div class="tier-name">Monitoring</div>
+        <div class="tier-price">$19<span class="per">/ month</span></div>
+        <p class="tier-sub">For sites under active development. Catches regressions before users do.</p>
+        <ul>
+          <li>Everything in One-off</li>
+          <li>Deploy-triggered re-scans (webhook)</li>
+          <li>CVE alerts in Slack / email</li>
+          <li>Badge stays active automatically</li>
+          <li>Up to 5 URLs</li>
+        </ul>
+        <a href="#" class="tier-cta">Start monitoring →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BADGE PREVIEW -->
+<section class="badge-section">
+  <div class="container">
+    <div class="badge-grid">
+      <div class="copy">
+        <div class="label-mono">The badge</div>
+        <h2>Show your users you actually checked.</h2>
+        <p>A real, verifiable badge for your landing page. Clicks through to a public report (the friendly version — fixed issues only, no juicy attack surface).</p>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+          <a class="vibe-badge" href="#" onclick="event.preventDefault()">
+            <span class="badge-mark">✓</span>
+            <span>Vibe-Checked</span>
+            <span class="v-meta">v1 · jun 2026</span>
+          </a>
+          <a class="vibe-badge" href="#" style="background:var(--ink);color:white;" onclick="event.preventDefault()">
+            <span class="badge-mark" style="background:var(--lime);color:var(--ink);">✓</span>
+            <span style="color:white;">Vibe-Checked</span>
+            <span class="v-meta" style="color:#9a9a93;">A · 180/180</span>
+          </a>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink-mute);margin-top:6px;">
+          drop-in snippet:
+        </div>
+        <pre style="font-family:var(--font-mono);font-size:12px;background:white;border:1px solid var(--line);padding:12px 14px;border-radius:var(--radius-sm);margin:8px 0 0;overflow:auto;color:var(--ink-soft);">&lt;script src="https://vibe-check.dev/b.js" data-id="vc_8f3a"&gt;&lt;/script&gt;</pre>
+      </div>
+
+      <div class="mock-site">
+        <div class="mock-bar">
+          <div class="lights"><span></span><span></span><span></span></div>
+          <div class="url">https://acme-app.com</div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-nav">
+            <div class="brand">▲ acme</div>
+            <div class="links"><span>Product</span><span>Docs</span><span>Pricing</span><span>Sign up</span></div>
+          </div>
+          <div class="mock-content">
+            <h4>The fastest way to ship what's in your head.</h4>
+            <p>Drag, drop, deploy. We handle the rest — backend, scaling, auth, all the wires you don't want to think about.</p>
+            <div class="mock-actions">
+              <span class="ba">Get started →</span>
+              <span class="bb">See demo</span>
+            </div>
+          </div>
+          <a class="vibe-badge badge-on-site" href="#" onclick="event.preventDefault()">
+            <span class="badge-mark">✓</span>
+            <span>Vibe-Checked</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final" id="cta">
+  <div class="container">
+    <div class="label-mono" style="justify-content:center;display:inline-flex;">▼ Last thing</div>
+    <h2>Ship with confidence.<br/>Takes 60 seconds.</h2>
+    <p>You've already shipped. We're just asking if you'd like to know what's underneath.</p>
+
+    <form class="scan" id="scan-form-2" onsubmit="return startScan(event, 'cta')">
+      <div class="prefix"><span>https://</span></div>
+      <input id="scan-url-2" type="text" placeholder="my-cool-side-project.vercel.app" autocomplete="off" spellcheck="false" />
+      <button class="scan-btn" type="submit">Scan now <span>→</span></button>
+    </form>
+    <div class="scan-note">
+      <span>◯ Free scan</span>
+      <span>◯ No account</span>
+      <span>◯ 60 seconds</span>
+    </div>
+    <div id="scan-stage-cta"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="container row">
+    <div>© 2026 Vibe-Check · independently funded · made in a kitchen</div>
+    <div class="links">
+      <a href="#">Status</a>
+      <a href="#">Trust</a>
+      <a href="#">Methodology</a>
+      <a href="#">Twitter</a>
+      <a href="#">Email</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const CHECKS = [
+    { stat: 'TLS/HSTS',   label: 'transport security headers',     ms: 240,  result: 'PASS',  cls: 'done' },
+    { stat: 'CSP',        label: 'content-security-policy',         ms: 410,  result: 'FAIL',  cls: 'fail' },
+    { stat: 'AUTH',       label: 'probing /admin and /api/users',  ms: 1480, result: 'WARN',  cls: 'warn' },
+    { stat: 'CORS',       label: 'cross-origin policy',             ms: 320,  result: 'PASS',  cls: 'done' },
+    { stat: 'CVE',        label: 'cross-checked 47 deps',           ms: 980,  result: '3 hit', cls: 'warn' },
+    { stat: 'PROMPT',     label: '40 jailbreaks vs /api/chat',      ms: 1820, result: 'FAIL',  cls: 'fail' },
+    { stat: 'ENDPOINTS',  label: 'walked /api, /_next, /.well-known', ms: 760, result: 'PASS',  cls: 'done' },
+    { stat: 'SECRETS',    label: 'public bucket + env grep',         ms: 540, result: 'PASS',  cls: 'done' },
+  ];
+
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function normalizeUrl(raw) {
+    if (!raw) return null;
+    let u = raw.trim().replace(/^https?:\/\//, '');
+    u = u.replace(/\/$/, '');
+    if (!u.includes('.') || u.includes(' ')) return null;
+    return u;
+  }
+
+  function startScan(e, key) {
+    e.preventDefault();
+    const inputId = key === 'hero' ? 'scan-url' : 'scan-url-2';
+    const stageId = key === 'hero' ? 'scan-stage-hero' : 'scan-stage-cta';
+    const formId = key === 'hero' ? 'scan-form' : 'scan-form-2';
+    const url = normalizeUrl(document.getElementById(inputId).value || 'my-vibe-coded-app.vercel.app');
+    if (!url) {
+      const inp = document.getElementById(inputId);
+      inp.style.outline = '2px solid #E25C3A';
+      setTimeout(() => inp.style.outline = '', 600);
+      return false;
+    }
+    const form = document.getElementById(formId);
+    const btn = form.querySelector('.scan-btn');
+    btn.disabled = true;
+    btn.innerHTML = 'Scanning… <span>·</span>';
+
+    const stage = document.getElementById(stageId);
+    stage.innerHTML = renderProgress(url);
+    requestAnimationFrame(() => runProgress(stage, url, () => {
+      btn.disabled = false;
+      btn.innerHTML = 'Scan again <span>→</span>';
+      stage.insertAdjacentHTML('beforeend', renderResult(url));
+    }));
+    return false;
+  }
+
+  function renderProgress(url) {
+    const items = CHECKS.map((c,i) => `
+      <li data-i="${i}" class="${c.cls}">
+        <span class="stat">${c.stat}</span>
+        <span class="label">${escapeHtml(c.label)}</span>
+        <span class="ms">…</span>
+      </li>
+    `).join('');
+    return `
+      <div class="scan-progress" id="sp">
+        <div class="header-row">
+          <div class="target">scanning <b>https://${escapeHtml(url)}</b></div>
+          <div class="pct" id="sp-pct">0%</div>
+        </div>
+        <div class="bar"><div class="bar-fill" id="sp-fill"></div></div>
+        <ul class="log" id="sp-log">${items}</ul>
+      </div>
+    `;
+  }
+
+  function runProgress(stage, url, done) {
+    const log = stage.querySelector('#sp-log');
+    const fill = stage.querySelector('#sp-fill');
+    const pct = stage.querySelector('#sp-pct');
+    const total = CHECKS.length;
+    let i = 0;
+    function next() {
+      if (i >= total) { fill.style.width = '100%'; pct.textContent = '100%'; setTimeout(done, 350); return; }
+      const c = CHECKS[i];
+      const li = log.querySelector(`li[data-i="${i}"]`);
+      li.classList.add('on');
+      const msEl = li.querySelector('.ms');
+      msEl.textContent = 'running…';
+      // simulate compressed time
+      const realMs = Math.max(180, c.ms * 0.32);
+      setTimeout(() => {
+        msEl.textContent = c.result;
+        i++;
+        const p = Math.round((i/total)*100);
+        fill.style.width = p+'%';
+        pct.textContent = p+'%';
+        next();
+      }, realMs);
+    }
+    next();
+  }
+
+  function renderResult(url) {
+    return `
+      <div class="scan-result">
+        <div class="top">
+          <div style="display:flex;align-items:center;gap:18px;">
+            <div class="grade">C+</div>
+            <div class="top-text">
+              <h3>Scan complete for <span style="font-family:var(--font-mono);">${escapeHtml(url)}</span></h3>
+              <p>You're not on fire. But you're standing pretty close to the stove.</p>
+            </div>
+          </div>
+          <a class="btn-primary" href="#pricing" style="background:var(--violet);">Unlock full report →</a>
+        </div>
+        <div class="findings">
+          <div><span class="n danger">2</span>critical · fix today</div>
+          <div><span class="n warn">4</span>medium · fix this week</div>
+          <div><span class="n ok">9</span>passed clean</div>
+        </div>
+        <div class="footer">
+          <span>top issue: <b style="color:var(--ink);font-family:var(--font-display);">/api/users</b> is publicly readable</span>
+          <a href="#pricing">See all 6 findings →</a>
+        </div>
+      </div>
+    `;
+  }
+</script>
+
+</body>
+</html>
