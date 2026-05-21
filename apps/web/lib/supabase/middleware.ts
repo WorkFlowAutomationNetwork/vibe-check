@@ -33,7 +33,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/badge') ||
     request.nextUrl.pathname.startsWith('/integrations') ||
     request.nextUrl.pathname.startsWith('/settings') ||
-    request.nextUrl.pathname.startsWith('/billing')
+    request.nextUrl.pathname.startsWith('/billing') ||
+    request.nextUrl.pathname.startsWith('/admin')
 
   const isAuthPage = request.nextUrl.pathname === '/sign-in' ||
     request.nextUrl.pathname === '/sign-up'

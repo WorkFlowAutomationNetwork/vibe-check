@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -13,6 +13,21 @@ export default async function AppShell({ children, activeNav }: AppShellProps) {
   const email = user?.email ?? ''
   const initials = email.slice(0, 2).toUpperCase()
   const displayName = email.split('@')[0]
+
+  // Check admin status for conditional nav item
+  let isAdmin = false
+  let planLabel = 'Free plan'
+  if (user) {
+    const service = createServiceClient()
+    const { data: profile } = await service
+      .from('profiles')
+      .select('is_admin, plan')
+      .eq('id', user.id)
+      .single()
+    isAdmin = profile?.is_admin ?? false
+    if (profile?.plan === 'starter') planLabel = 'Starter'
+    else if (profile?.plan === 'monitor') planLabel = 'Monitor'
+  }
 
   return (
     <div className="app-shell">
@@ -43,6 +58,14 @@ export default async function AppShell({ children, activeNav }: AppShellProps) {
           <Link href="/settings" className={activeNav === 'settings' ? 'active' : ''}>
             <span className="nav-ico">⚙</span> Settings
           </Link>
+          {isAdmin && (
+            <>
+              <div className="nav-sep">Admin</div>
+              <Link href="/admin" style={{ color: 'var(--violet)', fontWeight: 600 }}>
+                <span className="nav-ico" style={{ color: 'var(--violet)' }}>★</span> Admin panel
+              </Link>
+            </>
+          )}
           <div className="nav-sep">Help</div>
           <Link href="/docs">
             <span className="nav-ico">?</span> Docs &amp; methodology
@@ -55,7 +78,7 @@ export default async function AppShell({ children, activeNav }: AppShellProps) {
           <div className="avatar">{initials}</div>
           <div className="who">
             <b>{displayName}</b>
-            <small>Free plan</small>
+            <small>{planLabel}</small>
           </div>
         </div>
       </aside>
