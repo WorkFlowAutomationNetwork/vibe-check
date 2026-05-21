@@ -148,7 +148,7 @@ export default async function DashboardPage() {
         </div>
 
         <h2 className="section-label">
-          Recent activity <Link href="#" className="see-all">full log →</Link>
+          Recent activity <Link href="/activity" className="see-all">full log →</Link>
         </h2>
         <div className="activity">
           <div className="activity-item cve">
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
               <b>Badge renewed</b> for <code>acme-app.vercel.app</code>
               <small>valid through Jun 15 · public report link refreshed</small>
             </div>
-            <div className="more"><a href="#">copy link →</a></div>
+            <div className="more"><button style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--violet)', padding: 0 }} onClick={() => { if (typeof navigator !== 'undefined') navigator.clipboard.writeText(window.location.origin + '/report/demo/public') }}>copy link →</button></div>
           </div>
           <div className="activity-item fix">
             <div className="ts">2026-05-15 18:42</div>

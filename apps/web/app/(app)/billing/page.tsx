@@ -53,7 +53,7 @@ export default function BillingPage() {
             </div>
             <div className="renewal-footer">
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)' }}>backup card not set</span>
-              <a href="#">Manage payment →</a>
+              <a href="/api/billing/portal">Manage payment →</a>
             </div>
           </div>
         </div>

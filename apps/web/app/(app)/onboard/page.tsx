@@ -4,8 +4,19 @@ import Link from 'next/link'
 import { useState } from 'react'
 import '../app.css'
 
+const VERIFY_TOKEN = 'vc-verify=k8sn3p2-9f1a-c402-d7e1-8b3a91f02e44'
+const VERIFY_PATH = '/.well-known/vibe-check-verify.txt'
+
 export default function OnboardPage() {
   const [activeTab, setActiveTab] = useState<'dns' | 'file' | 'meta'>('dns')
+  const [copied, setCopied] = useState<string | null>(null)
+
+  function copy(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key)
+      setTimeout(() => setCopied(null), 2000)
+    })
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -78,8 +89,8 @@ export default function OnboardPage() {
                 <div className="k">value</div>
                 <div className="v" style={{ display: 'block', width: '100%' }}>
                   <div className="copy-block">
-                    <span className="val">vc-verify=k8sn3p2-9f1a-c402-d7e1-8b3a91f02e44</span>
-                    <button>copy</button>
+                    <span className="val">{VERIFY_TOKEN}</span>
+                    <button onClick={() => copy(VERIFY_TOKEN, 'dns-val')}>{copied === 'dns-val' ? '✓ copied' : 'copy'}</button>
                   </div>
                 </div>
               </div>
@@ -99,13 +110,13 @@ export default function OnboardPage() {
               </p>
               <div className="copy-block" style={{ marginBottom: 10 }}>
                 <span style={{ color: '#9a9a93' }}>path&nbsp;&nbsp;</span>
-                <span className="val">/.well-known/vibe-check-verify.txt</span>
-                <button>copy</button>
+                <span className="val">{VERIFY_PATH}</span>
+                <button onClick={() => copy(VERIFY_PATH, 'file-path')}>{copied === 'file-path' ? '✓ copied' : 'copy'}</button>
               </div>
               <div className="copy-block">
                 <span style={{ color: '#9a9a93' }}>body&nbsp;&nbsp;</span>
-                <span className="val">vc-verify=k8sn3p2-9f1a-c402-d7e1-8b3a91f02e44</span>
-                <button>copy</button>
+                <span className="val">{VERIFY_TOKEN}</span>
+                <button onClick={() => copy(VERIFY_TOKEN, 'file-body')}>{copied === 'file-body' ? '✓ copied' : 'copy'}</button>
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
                 <button className="btn btn-primary" style={{ padding: '10px 14px', fontSize: 13 }}>↻ Check file</button>
@@ -120,7 +131,7 @@ export default function OnboardPage() {
               <p style={{ margin: '0 0 14px', fontSize: 13.5, color: 'var(--ink-soft)' }}>Best for static sites or anywhere editing DNS is a faff.</p>
               <div className="copy-block">
                 <span className="val">&lt;meta name=&quot;vibe-check&quot; content=&quot;k8sn3p2-9f1a-c402&quot;&gt;</span>
-                <button>copy</button>
+                <button onClick={() => copy('<meta name="vibe-check" content="k8sn3p2-9f1a-c402">', 'meta')}>{copied === 'meta' ? '✓ copied' : 'copy'}</button>
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
                 <button className="btn btn-primary" style={{ padding: '10px 14px', fontSize: 13 }}>↻ Check page source</button>
