@@ -1,56 +1,15 @@
 import Link from 'next/link'
 import AppShell from '@/components/shared/AppShell'
-import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import '../app.css'
 
-export default async function DashboardPage() {
-  let isAdmin = false
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const service = createServiceClient()
-    const { data: profile } = await service
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-    isAdmin = profile?.is_admin ?? false
-  }
-
+export default function DashboardPage() {
   return (
     <AppShell activeNav="dashboard">
       <main className="app-main">
         <div className="topline">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div>
-              <h1 className="greeting">Good morning ↗</h1>
-              <div className="greeting-sub">1 monitored · 1 historic · 2 new CVEs since Tue</div>
-            </div>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '4px 10px',
-                  background: 'var(--violet)',
-                  color: '#fff',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  textDecoration: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  alignSelf: 'flex-start',
-                  marginTop: 6,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ★ Admin Portal
-              </Link>
-            )}
+          <div>
+            <h1 className="greeting">Good morning ↗</h1>
+            <div className="greeting-sub">1 monitored · 1 historic · 2 new CVEs since Tue</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-soft">↻ Re-scan all</button>
@@ -176,7 +135,7 @@ export default async function DashboardPage() {
               <b>Badge renewed</b> for <code>acme-app.vercel.app</code>
               <small>valid through Jun 15 · public report link refreshed</small>
             </div>
-            <div className="more"><button style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--violet)', padding: 0 }} onClick={() => { if (typeof navigator !== 'undefined') navigator.clipboard.writeText(window.location.origin + '/report/demo/public') }}>copy link →</button></div>
+            <div className="more"><span style={{ color: 'var(--violet)', fontFamily: 'inherit', fontSize: 'inherit' }}>copy link →</span></div>
           </div>
           <div className="activity-item fix">
             <div className="ts">2026-05-15 18:42</div>

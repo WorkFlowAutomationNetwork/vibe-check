@@ -4,6 +4,22 @@
 
 ---
 
+## Project status
+
+**Always read [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) at the start of every session.**
+
+It is the living record of what is built, what is wired, what is broken, and what to build next. Use it to answer questions like "what's the status of X?", "what should we do next?", "is Y implemented?".
+
+**Update `PROJECT_STATUS.md` after every session that includes:**
+- A new page or component built
+- An API route added or changed
+- A Supabase migration written or applied
+- A Stripe integration step completed
+- A known issue fixed or discovered
+- Any change to the scanner service
+
+---
+
 ## What this is
 
 Vibe-Check is a SaaS security auditing tool for vibe-coded apps. Users provide a URL, verify ownership, and receive a graded security report covering headers, exposed endpoints, prompt injection vulnerabilities, dependency CVEs, and more. Paid tiers add active scanning, shareable reports, an embeddable trust badge, and continuous monitoring with deploy-triggered re-scans via GitHub/Vercel webhooks.

@@ -1,33 +1,40 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/client'
 
 interface AppShellProps {
   children: React.ReactNode
   activeNav?: 'dashboard' | 'urls' | 'reports' | 'badge' | 'integrations' | 'billing' | 'settings'
 }
 
-export default async function AppShell({ children, activeNav }: AppShellProps) {
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export default function AppShell({ children, activeNav }: AppShellProps) {
+  const [email, setEmail] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [planLabel, setPlanLabel] = useState('Free plan')
 
-  const email = user?.email ?? ''
-  const initials = email.slice(0, 2).toUpperCase()
-  const displayName = email.split('@')[0]
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setEmail(user.email ?? '')
+      supabase
+        .from('profiles')
+        .select('is_admin, plan')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (!data) return
+          setIsAdmin(data.is_admin ?? false)
+          if (data.plan === 'starter') setPlanLabel('Starter')
+          else if (data.plan === 'monitor') setPlanLabel('Monitor')
+        })
+    })
+  }, [])
 
-  // Check admin status for conditional nav item
-  let isAdmin = false
-  let planLabel = 'Free plan'
-  if (user) {
-    const service = createServiceClient()
-    const { data: profile } = await service
-      .from('profiles')
-      .select('is_admin, plan')
-      .eq('id', user.id)
-      .single()
-    isAdmin = profile?.is_admin ?? false
-    if (profile?.plan === 'starter') planLabel = 'Starter'
-    else if (profile?.plan === 'monitor') planLabel = 'Monitor'
-  }
+  const initials = email ? email.slice(0, 2).toUpperCase() : ''
+  const displayName = email ? email.split('@')[0] : ''
 
   return (
     <div className="app-shell">
