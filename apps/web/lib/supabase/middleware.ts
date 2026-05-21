@@ -35,9 +35,18 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/settings') ||
     request.nextUrl.pathname.startsWith('/billing')
 
+  const isAuthPage = request.nextUrl.pathname === '/sign-in' ||
+    request.nextUrl.pathname === '/sign-up'
+
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && isAuthPage) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

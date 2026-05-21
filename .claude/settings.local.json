@@ -1,4 +1,7 @@
 {
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
   "skillOverrides": {
     "firecrawl": "off",
     "firecrawl-agent": "off",
@@ -13,5 +16,6 @@
     "firecrawl-parse": "off",
     "firecrawl-scrape": "off",
     "firecrawl-search": "off"
-  }
+  },
+  "enableAllProjectMcpServers": true
 }

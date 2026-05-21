@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import AppShell from '@/components/shared/AppShell'
+import './app.css'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerClient()
@@ -9,5 +11,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/sign-in')
   }
 
-  return <>{children}</>
+  return <AppShell>{children}</AppShell>
 }

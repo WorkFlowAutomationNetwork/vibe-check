@@ -7,7 +7,9 @@ create policy "users can view own profile"
 
 create policy "users can update own profile"
   on public.profiles for update
-  using (auth.uid() = id);
+  to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 -- ============================================================
 -- urls
@@ -22,7 +24,9 @@ create policy "users can insert own urls"
 
 create policy "users can update own urls"
   on public.urls for update
-  using (auth.uid() = user_id);
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- ============================================================
 -- scans
@@ -96,7 +100,9 @@ create policy "users can view own integrations"
 
 create policy "users can update own integrations"
   on public.integrations for update
-  using (auth.uid() = user_id);
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- ============================================================
 -- webhook_log — read-only for users; inserts via service role only
@@ -124,4 +130,6 @@ create policy "users can insert own api keys"
 
 create policy "users can update own api keys"
   on public.api_keys for update
-  using (auth.uid() = user_id);
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
