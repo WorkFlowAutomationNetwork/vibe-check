@@ -12,8 +12,9 @@ _EXPIRY_WARNING_DAYS = 30
 def _analyze_cert_info(days_until_expiry: int) -> list[Finding]:
     if days_until_expiry < 0:
         return [Finding(
+            check_name="cert-expiry",
             severity="critical",
-            category="TLS / Certificate",
+            category="transport",
             title="SSL Certificate Expired",
             description=f"The certificate expired {abs(days_until_expiry)} days ago.",
             what_we_did="Checked certificate validity period using sslyze.",
@@ -21,16 +22,18 @@ def _analyze_cert_info(days_until_expiry: int) -> list[Finding]:
         )]
     if days_until_expiry < _EXPIRY_WARNING_DAYS:
         return [Finding(
-            severity="high",
-            category="TLS / Certificate",
+            check_name="cert-expiry",
+            severity="medium",
+            category="transport",
             title="SSL Certificate Expiring Soon",
             description=f"Certificate expires in {days_until_expiry} days.",
             what_we_did="Checked certificate expiry date using sslyze.",
             remediation=f"Renew your SSL certificate before it expires in {days_until_expiry} days.",
         )]
     return [Finding(
+        check_name="cert-expiry",
         severity="pass",
-        category="TLS / Certificate",
+        category="transport",
         title="SSL Certificate Valid",
         description=f"Certificate is valid for {days_until_expiry} more days.",
         what_we_did="Checked certificate validity and expiry using sslyze.",
@@ -43,8 +46,9 @@ def _analyze_tls_versions(has_tls12: bool, has_tls13: bool, has_weak: bool) -> l
 
     if has_weak and not has_tls12 and not has_tls13:
         findings.append(Finding(
-            severity="high",
-            category="TLS / Protocol",
+            check_name="tls-versions",
+            severity="critical",
+            category="transport",
             title="Only Weak TLS Versions Supported (TLS 1.0/1.1)",
             description="The server only supports deprecated TLS 1.0 or TLS 1.1 protocols.",
             what_we_did="Probed supported TLS versions using sslyze.",
@@ -52,8 +56,9 @@ def _analyze_tls_versions(has_tls12: bool, has_tls13: bool, has_weak: bool) -> l
         ))
     elif has_weak:
         findings.append(Finding(
+            check_name="tls-versions",
             severity="medium",
-            category="TLS / Protocol",
+            category="transport",
             title="Weak TLS Versions Also Supported (TLS 1.0/1.1)",
             description="The server supports TLS 1.2+ but also allows deprecated TLS 1.0 or 1.1.",
             what_we_did="Probed supported TLS versions using sslyze.",
@@ -62,8 +67,9 @@ def _analyze_tls_versions(has_tls12: bool, has_tls13: bool, has_weak: bool) -> l
 
     if has_tls13:
         findings.append(Finding(
+            check_name="tls-versions",
             severity="pass",
-            category="TLS / Protocol",
+            category="transport",
             title="TLS 1.3 Supported",
             description="Server supports TLS 1.3, the most secure TLS version.",
             what_we_did="Probed TLS 1.3 support using sslyze.",
@@ -71,8 +77,9 @@ def _analyze_tls_versions(has_tls12: bool, has_tls13: bool, has_weak: bool) -> l
         ))
     elif has_tls12:
         findings.append(Finding(
+            check_name="tls-versions",
             severity="pass",
-            category="TLS / Protocol",
+            category="transport",
             title="TLS 1.2 Supported",
             description="Server supports TLS 1.2 as the minimum acceptable version.",
             what_we_did="Probed TLS 1.2 support using sslyze.",
@@ -87,8 +94,9 @@ class TLSScanner(BaseScanner):
         hostname = urlparse(self.url).hostname
         if not hostname:
             return [Finding(
+                check_name="tls-scan",
                 severity="info",
-                category="TLS / Certificate",
+                category="transport",
                 title="TLS Scan Skipped",
                 description="Could not extract hostname from URL.",
                 what_we_did="Attempted to parse hostname from URL.",
@@ -121,8 +129,9 @@ class TLSScanner(BaseScanner):
 
         except Exception as exc:
             return [Finding(
+                check_name="tls-scan",
                 severity="info",
-                category="TLS / Certificate",
+                category="transport",
                 title="TLS Scan Could Not Complete",
                 description=f"sslyze could not connect to {hostname}:443 — {exc}",
                 what_we_did="Attempted TLS/SSL analysis using sslyze.",

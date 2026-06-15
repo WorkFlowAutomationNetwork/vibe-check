@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 
-type AdminNavItem = 'overview' | 'users' | 'subscriptions' | 'scans' | 'settings'
+type AdminNavItem = 'overview' | 'users' | 'subscriptions' | 'scans' | 'analytics' | 'revenue' | 'settings'
 
 interface AdminShellProps {
   children: React.ReactNode
@@ -41,6 +41,12 @@ export default async function AdminShell({ children, activeNav }: AdminShellProp
           </Link>
           <Link href="/admin/scans" className={`admin-nav-link${activeNav === 'scans' ? ' active' : ''}`}>
             <span className="nav-ico">▤</span> Scans
+          </Link>
+          <Link href="/admin/analytics" className={`admin-nav-link${activeNav === 'analytics' ? ' active' : ''}`}>
+            <span className="nav-ico">◈</span> Analytics
+          </Link>
+          <Link href="/admin/revenue" className={`admin-nav-link${activeNav === 'revenue' ? ' active' : ''}`}>
+            <span className="nav-ico">◆</span> Revenue
           </Link>
 
           <div className="admin-nav-section" style={{ marginTop: 20 }}>System</div>

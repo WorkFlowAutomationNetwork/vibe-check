@@ -1,8 +1,49 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
+import { createServerClient } from '@/lib/supabase/server'
 import '../app.css'
 
-export default function BillingPage() {
+const PLAN_NAMES: Record<string, string> = {
+  free: 'Free',
+  starter: 'Starter — one-off scans',
+  monitor: 'Monitor — continuous',
+}
+
+const PLAN_PRICES: Record<string, string> = {
+  free: '$0 / month',
+  starter: '$9 / scan',
+  monitor: '$19 / month',
+}
+
+const PLAN_DESCRIPTIONS: Record<string, string> = {
+  free: 'Passive scan only. No active probes, no badge, no report sharing.',
+  starter: 'One-off active scans with shareable report and trust badge.',
+  monitor: 'Continuous monitoring, deploy-triggered re-scans, CVE alerts, and up to 5 URLs.',
+}
+
+const URL_LIMITS: Record<string, number> = { free: 1, starter: 1, monitor: 5 }
+
+export default async function BillingPage() {
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) notFound()
+
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+  const [{ data: profile }, { count: scanCount }, { count: urlCount }] = await Promise.all([
+    supabase.from('profiles').select('plan, stripe_customer_id, stripe_subscription_status').eq('id', user.id).single(),
+    supabase.from('scans').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', startOfMonth),
+    supabase.from('urls').select('id', { count: 'exact', head: true }).eq('user_id', user.id).is('deleted_at', null),
+  ])
+
+  const plan = (profile?.plan ?? 'free') as string
+  const hasStripe = !!profile?.stripe_customer_id
+  const urlLimit = URL_LIMITS[plan] ?? 1
+  const urlsUsed = urlCount ?? 0
+  const scansUsed = scanCount ?? 0
+
   return (
     <AppShell activeNav="billing">
       <main className="app-main">
@@ -11,50 +52,68 @@ export default function BillingPage() {
             <h1 className="greeting">Billing &amp; plan</h1>
             <div className="greeting-sub">manage subscription · view invoices · update payment method</div>
           </div>
-          <button className="btn btn-soft">⇩ Export tax summary</button>
         </div>
 
         <h2 className="section-label">Current plan</h2>
         <div className="billing-grid">
           <div className="plan-card">
             <div className="stripe" />
-            <div className="ptag">Active subscription</div>
-            <h2 className="pname">Starter <span className="small">— one-off scans</span></h2>
-            <p className="pdesc">You&apos;ve spent $126 on one-off scans this month. Monitor at $19/mo would have covered every one of them — with continuous re-scans thrown in. Make of that what you will.</p>
+            <div className="ptag">Active plan</div>
+            <h2 className="pname">{PLAN_NAMES[plan] ?? plan}</h2>
+            <p className="pdesc">{PLAN_DESCRIPTIONS[plan]}</p>
             <div className="plan-meta">
               <div>
-                <div className="lbl">Monthly cost</div>
-                <div className="val">$0.00 base</div>
+                <div className="lbl">Price</div>
+                <div className="val">{PLAN_PRICES[plan]}</div>
               </div>
               <div>
                 <div className="lbl">Scans this month</div>
-                <div className="val lime">14 × $9 = $126</div>
+                <div className="val lime">{scansUsed}</div>
               </div>
               <div>
-                <div className="lbl">Next invoice</div>
-                <div className="val">Jun 01, 2026</div>
+                <div className="lbl">URLs monitored</div>
+                <div className="val">{urlsUsed} / {urlLimit}</div>
               </div>
             </div>
             <div className="pactions">
-              <button className="btn btn-lime">↑ Upgrade to Monitor</button>
-              <button className="btn btn-outline">Switch to annual</button>
+              {plan === 'free' && (
+                <Link href="/api/billing/portal" className="btn btn-lime">↑ Upgrade to Starter</Link>
+              )}
+              {plan === 'starter' && (
+                <Link href="/api/billing/portal" className="btn btn-lime">↑ Upgrade to Monitor</Link>
+              )}
+              {plan === 'monitor' && (
+                <Link href="/api/billing/portal" className="btn btn-outline">Manage subscription</Link>
+              )}
             </div>
           </div>
 
           <div className="renewal-card">
             <h3>Payment method</h3>
-            <div className="rdate">renews next on <b>Jun 01, 2026</b></div>
-            <div className="card-on-file">
-              <div className="ico visa">VISA</div>
-              <div className="meta">
-                <div>•••• •••• •••• 4242</div>
-                <small>expires 08/29 · added Mar 18 · billing zip 94110</small>
-              </div>
-            </div>
-            <div className="renewal-footer">
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)' }}>backup card not set</span>
-              <a href="/api/billing/portal">Manage payment →</a>
-            </div>
+            {hasStripe ? (
+              <>
+                <div className="rdate">
+                  <a href="/api/billing/portal" style={{ color: 'var(--violet)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                    Manage payment method →
+                  </a>
+                </div>
+                <div style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-soft)' }}>
+                  View and update your card, billing address, and invoices in the Stripe portal.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rdate" style={{ color: 'var(--ink-mute)' }}>No payment method on file</div>
+                <div style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-soft)' }}>
+                  Upgrade to a paid plan to add a payment method.
+                </div>
+                {plan === 'free' && (
+                  <div className="renewal-footer" style={{ marginTop: 16 }}>
+                    <a href="/api/billing/portal" style={{ color: 'var(--violet)' }}>Add payment method →</a>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -62,21 +121,37 @@ export default function BillingPage() {
         <div className="usage">
           <div className="usage-stat">
             <div className="lbl">Scans run</div>
-            <div className="val-row"><span className="val">14</span><span className="denom">/ unlimited</span></div>
-            <div className="meter"><div className="fill" style={{ width: '35%' }} /></div>
-            <div className="meter-note">avg 3.5 scans/week · trending up</div>
+            <div className="val-row">
+              <span className="val">{scansUsed}</span>
+              <span className="denom">/ {plan === 'free' ? '1 free' : 'unlimited'}</span>
+            </div>
+            <div className="meter">
+              <div className="fill" style={{ width: plan === 'free' ? `${Math.min(100, scansUsed * 100)}%` : `${Math.min(100, (scansUsed / 20) * 100)}%` }} />
+            </div>
+            <div className="meter-note">
+              {scansUsed === 0 ? 'no scans yet this month' : `${scansUsed} scan${scansUsed !== 1 ? 's' : ''} completed`}
+            </div>
           </div>
           <div className="usage-stat">
             <div className="lbl">URLs monitored</div>
-            <div className="val-row"><span className="val">1</span><span className="denom">/ 1 on Starter</span></div>
-            <div className="meter"><div className="fill warn" style={{ width: '100%' }} /></div>
-            <div className="meter-note">at limit · upgrade to add another URL</div>
+            <div className="val-row">
+              <span className="val">{urlsUsed}</span>
+              <span className="denom">/ {urlLimit} on {plan}</span>
+            </div>
+            <div className="meter">
+              <div className={`fill ${urlsUsed >= urlLimit ? 'warn' : ''}`} style={{ width: `${Math.min(100, (urlsUsed / urlLimit) * 100)}%` }} />
+            </div>
+            <div className="meter-note">
+              {urlsUsed >= urlLimit
+                ? `at limit · ${plan !== 'monitor' ? 'upgrade to add more' : 'maximum reached'}`
+                : `${urlLimit - urlsUsed} slot${urlLimit - urlsUsed !== 1 ? 's' : ''} remaining`}
+            </div>
           </div>
           <div className="usage-stat">
             <div className="lbl">Reports generated</div>
-            <div className="val-row"><span className="val">14</span><span className="denom">PDFs · 11 shared</span></div>
-            <div className="meter"><div className="fill lime" style={{ width: '78%' }} /></div>
-            <div className="meter-note">avg report opened 4× by readers</div>
+            <div className="val-row"><span className="val">{scansUsed}</span><span className="denom">total</span></div>
+            <div className="meter"><div className="fill lime" style={{ width: `${Math.min(100, (scansUsed / 20) * 100)}%` }} /></div>
+            <div className="meter-note">one report per completed scan</div>
           </div>
         </div>
 
@@ -84,16 +159,19 @@ export default function BillingPage() {
         <div className="compare">
           <div className="compare-row head">
             <div><span style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11, color: 'var(--ink-mute)' }}>features</span></div>
-            <div>
+            <div style={{ background: plan === 'free' ? 'var(--lime-soft, #f7ffe0)' : undefined }}>
               Free
+              {plan === 'free' && <span className="current-badge">current</span>}
               <div className="price">$0<small> / month</small></div>
             </div>
-            <div style={{ background: 'var(--lime-soft)' }}>
-              One-off <span className="current-badge">current</span>
+            <div style={{ background: plan === 'starter' ? 'var(--lime-soft, #f7ffe0)' : undefined }}>
+              One-off
+              {plan === 'starter' && <span className="current-badge">current</span>}
               <div className="price">$9<small> / scan</small></div>
             </div>
-            <div>
+            <div style={{ background: plan === 'monitor' ? 'var(--lime-soft, #f7ffe0)' : undefined }}>
               <span style={{ color: 'var(--violet)' }}>Monitor</span>
+              {plan === 'monitor' && <span className="current-badge">current</span>}
               <div className="price">$19<small> / month</small></div>
             </div>
           </div>
@@ -141,50 +219,54 @@ export default function BillingPage() {
           </div>
           <div className="compare-row foot">
             <div />
-            <div><button className="current-btn">— not on plan —</button></div>
-            <div><button className="current-btn">current plan</button></div>
-            <div><button className="upgrade-btn">Upgrade to Monitor →</button></div>
+            <div>
+              {plan === 'free'
+                ? <button className="current-btn">current plan</button>
+                : <Link href="/api/billing/portal" className="upgrade-btn">Downgrade to Free</Link>}
+            </div>
+            <div>
+              {plan === 'starter'
+                ? <button className="current-btn">current plan</button>
+                : <Link href="/api/billing/portal" className="upgrade-btn">
+                    {plan === 'free' ? 'Upgrade to Starter →' : 'Switch to Starter'}
+                  </Link>}
+            </div>
+            <div>
+              {plan === 'monitor'
+                ? <button className="current-btn">current plan</button>
+                : <Link href="/api/billing/portal" className="upgrade-btn">Upgrade to Monitor →</Link>}
+            </div>
           </div>
         </div>
 
         <h2 className="section-label">Invoice history</h2>
-        <div className="invoices">
-          <div className="invoice-row head">
-            <div>Date</div>
-            <div>Description</div>
-            <div>Amount</div>
-            <div>Status</div>
-            <div>Receipt</div>
-          </div>
-          <div className="invoice-row">
-            <div>2026-05-16</div>
-            <div>Active scan · acme-app.vercel.app</div>
-            <div className="amt">$9.00</div>
-            <div className="stat">paid</div>
-            <div className="dl">⇩ PDF</div>
-          </div>
-          <div className="invoice-row">
-            <div>2026-05-04</div>
-            <div>Active scan · api.acme-app.com</div>
-            <div className="amt">$9.00</div>
-            <div className="stat">paid</div>
-            <div className="dl">⇩ PDF</div>
-          </div>
-          <div className="invoice-row">
-            <div>2026-04-18</div>
-            <div>Active scan · acme-app.vercel.app</div>
-            <div className="amt">$9.00</div>
-            <div className="stat refund">refunded</div>
-            <div className="dl">⇩ PDF</div>
-          </div>
+        <div className="invoices" style={{ padding: '24px 28px' }}>
+          {hasStripe ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14, color: 'var(--ink-soft)' }}>
+                View your complete billing history, download PDF receipts, and manage invoices in the Stripe portal.
+              </div>
+              <a href="/api/billing/portal" className="btn btn-soft" style={{ padding: '8px 16px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                View invoices →
+              </a>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+              No invoices yet — you&apos;re on the free plan.
+            </div>
+          )}
         </div>
 
-        <div style={{ marginTop: 60, padding: 24, border: '1px dashed var(--line-strong)', borderRadius: 'var(--radius)', background: 'var(--bg-sub)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
+        <div style={{ marginTop: 60, padding: 24, border: '1px dashed var(--line)', borderRadius: 'var(--radius)', background: 'var(--bg-sub)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
           <div>
             <h3 style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Cancel anytime, no friction.</h3>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>No &quot;are you sure?&quot; 4-step survey. We hate them too.</p>
           </div>
-          <button className="btn btn-soft" style={{ color: 'var(--ink-soft)' }}>Cancel subscription</button>
+          {hasStripe && (
+            <a href="/api/billing/portal" className="btn btn-soft" style={{ color: 'var(--ink-soft)' }}>
+              Manage subscription
+            </a>
+          )}
         </div>
       </main>
     </AppShell>

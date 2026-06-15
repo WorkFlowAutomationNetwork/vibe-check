@@ -2,7 +2,21 @@
 
 > **Living document.** Update this file whenever a major feature is added, a page is built, a migration is applied, or an integration is wired up. Claude reads this at the start of every session to understand current state.
 
-*Last updated: 2026-06-15 — scanner service skeleton built, 40/40 tests passing ✅*
+*Last updated: 2026-06-16 — admin dashboard built · admin bypass for plan limits · analytics + revenue pages added*
+
+---
+
+## ⚠️ Known Issues — Check These First
+
+### 1. `cert-expiry` finding missing from scan output
+**File:** `apps/scanner/scanners/tls.py` — `_process_result()` method, cert chain lookup block  
+**Root cause:** sslyze emits a `CryptographyDeprecationWarning` about a malformed serial number in a trust store root cert. This causes `verified_certificate_chain[0]` access to fail silently inside `except Exception: pass`, so the `cert-expiry` finding is never written.  
+**Fix:** Fall back to `received_certificate_chain` when `verified_certificate_chain` is empty/raises, or suppress the deprecation warning before the sslyze call.
+
+### 2. Tech stack disclosure not checked by scanner
+**File:** `apps/scanner/scanners/headers.py`  
+**Root cause:** No check for `x-powered-by`, `server`, or `x-fah-adapter` headers that expose the tech stack. Confirmed present in chorusproject.io responses (`x-powered-by: Next.js`, `x-fah-adapter: nextjs-14.0.21`).  
+**Fix:** Add `_check_tech_disclosure()` method in `headers.py` that flags these headers as `low` severity findings with category `headers`.
 
 ---
 
@@ -21,9 +35,9 @@ A SaaS security auditing tool for "vibe-coded" apps. Users provide a URL, verify
 
 ## Current Build Phase
 
-> **Phase: Front-end complete. Scanner service skeleton built and tested. Ready for Fly.io deploy.**
+> **Phase: Scanner deployed. All app pages wired to real data. End-to-end scan flow ready to test.**
 
-All Next.js pages are built and wired. The Supabase database is live with 14 migrations applied. The Python scanner service (`apps/scanner/`) is **fully scaffolded and implemented** with passive scan modules running and 40 tests passing. Web app now dispatches scans via HTTP to the scanner (BullMQ removed). Stripe is integrated at the config/client level but no products have been created in the Stripe dashboard.
+All Next.js pages are built and **wired to real Supabase data** — no hardcoded placeholders remain. The scanner service is deployed to Fly.io at `https://vibe-check-scanner.fly.dev`. The full onboard → verify → scan → report flow is implemented. A `/demo` namespace preserves the original static UI for marketing. Stripe is configured but no products created yet.
 
 ---
 
@@ -33,8 +47,8 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 |---|---|---|
 | Next.js (apps/web) | ✅ Running | Next.js 14, App Router, TypeScript strict. Build passing. |
 | Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 14 migrations applied. |
-| Scanner (apps/scanner) | ✅ Built | FastAPI + Celery + Redis. 40 tests passing. Passive scan (headers + TLS) implemented. Ready to deploy to Fly.io. |
-| Redis | ⚠️ Not deployed | Internal to scanner service on Fly.io. Not needed by web app. Local dev: run `redis-server` or Docker. |
+| Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 40 tests. |
+| Redis (Fly.io) | ✅ Deployed | Fly.io managed Redis (Upstash). Connected to scanner. `vibe-check-redis` instance. |
 | Stripe | ⚠️ Client configured | `lib/stripe/client.ts` exists. No products created in Stripe dashboard yet. |
 | Resend (email) | ⚠️ Key needed | Referenced in `.env.example`. Not wired to any send calls yet. |
 
@@ -66,6 +80,7 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 | `20260521000013_set_admin_user.sql` | Sets `is_admin = true` for `patrickcampbell@workflowautomationnetwork.com.au` | ✅ Applied |
 | `20260521000014_plan_enforcement.sql` | `plan_limits` table, guard functions (`can_add_url`, `can_run_scan_type`, etc.), `my_entitlements` view | ✅ Applied |
 | `20260521000015_indexes_storage_stripe_status.sql` | `stripe_subscription_status` on profiles, 9 missing FK indexes, `reports` Storage bucket + RLS, `badge_status` view | ✅ Applied |
+| `20260616000016_admin_account.sql` | Auto-sets `is_admin=true` for `patrickcampbell@workflowautomationnetwork.com` on signup (BEFORE INSERT trigger on profiles). Also runs UPDATE in case account already exists. | ✅ Applied |
 
 ### Key schema facts
 - `profiles.plan` = `'free' | 'starter' | 'monitor'`
@@ -103,15 +118,22 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 
 | Page | Route | Status | Notes |
 |---|---|---|---|
-| Dashboard | `/dashboard` | ✅ Built | Server component. No event handlers (removed stub onClick). Admin link is in AppShell sidebar. Hardcoded placeholder scan/URL data. |
-| Onboard | `/onboard` | ✅ Built | `'use client'`. 3 verification methods (DNS, file, meta tag). All 4 copy buttons wired with clipboard API + "✓ copied" feedback. URL submission not yet wired to scanner. |
-| Report | `/report/[scanId]` | ✅ Built | Server component. `ReportActionsBar` client component handles share/download/re-scan actions. Hardcoded placeholder scan data. |
-| Public Report | `/report/[scanId]/public` | ✅ Built | Standalone (no AppShell). Branded header. Grade, findings table, CTA to sign up. Hardcoded placeholder data. |
-| Settings | `/settings` | ✅ Built | `'use client'`. Profile name save, password change, notification toggles, scan depth/rate — all write to Supabase `profiles` table. WAF IP copy. Delete account placeholder (shows alert). |
-| Badge | `/badge` | ✅ Built | Badge status, HTML/Markdown embed codes, copy buttons, public link, how-it-works cards. Hardcoded placeholder token. Not yet wired to real badges table. |
-| Billing | `/billing` | ✅ Built | Shows current plan, invoice history (hardcoded). "Manage payment →" links to `/api/billing/portal` (Stripe Customer Portal route exists). Upgrade/switch-to-annual buttons not yet wired. |
-| Integrations | `/integrations` | ⚠️ Partial | UI is fully rendered (GitHub/Vercel/Netlify/Slack cards). "Manage access" and "Disconnect" buttons have no handlers — just rendered. No OAuth flows implemented. |
-| Activity | `/activity` | ❌ Missing | Linked from dashboard "full log →". Route does not exist yet — will 404. |
+| Dashboard | `/dashboard` | ✅ Wired | Async server component. Real URL cards, real activity log, real quick-stats. Empty states for no URLs / no scans. RescanButton client component for re-scan. |
+| Onboard | `/onboard` | ✅ Wired | `OnboardFlow` client component. Full 4-step state machine: URL create → verify (DNS/file/meta) → scan trigger → polling. Calls `/api/urls`, `/api/verify`, `/api/scans`. |
+| Report | `/report/[scanId]` | ✅ Wired | Async server component. Fetches real scan + findings. Shows `ScanPollingView` while pending/running. Real `FindingsList` with expand/collapse. |
+| Public Report | `/report/[scanId]/public` | ✅ Wired | Async server component. Anon client, `is_public=true` filter. "Not public" message if not found. Limited findings columns (no remediation). |
+| Settings | `/settings` | ✅ Wired | `'use client'`. Profile name save, password change, notification toggles — all write to Supabase `profiles` table. |
+| Badge | `/badge` | ✅ Wired | Server component fetches active badge. `BadgeClient` client component handles copy state. Empty state if no badge. |
+| Billing | `/billing` | ✅ Wired | Async server component. Real plan from `profiles`, real scan/URL counts. Invoice history links to Stripe portal. Upgrade buttons link to `/api/billing/portal`. |
+| Integrations | `/integrations` | ⚠️ Partial | UI rendered. No OAuth flows implemented. |
+| Activity | `/activity` | ✅ Built | New page. Paginated `activity_log` query. Event type display map. Empty state. Links to scan reports. |
+
+### Demo namespace (frozen static UI for marketing)
+
+| Page | Route | Notes |
+|---|---|---|
+| Demo Dashboard | `/demo/dashboard` | Frozen copy of original hardcoded dashboard — acme-app.vercel.app, B+ grade, 4 activity items |
+| Demo Report | `/demo/report` | Frozen copy of hardcoded report page |
 
 ### Admin routes — authenticated + `is_admin = true`
 
@@ -123,6 +145,8 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 | Admin Create User | `/admin/users/new` | ✅ Built | Create user form with email + password. |
 | Admin Subscriptions | `/admin/subscriptions` | ✅ Built | Paying accounts overview. |
 | Admin Scans | `/admin/scans` | ✅ Built | All scans with type/status filter and pagination. Reads `scan_type` correctly. |
+| Admin Analytics | `/admin/analytics` | ✅ Built | Scan volume over time (12-week bar chart), severity breakdown, grade distribution, top finding categories, most scanned URLs. |
+| Admin Revenue | `/admin/revenue` | ✅ Built | MRR/ARR/net revenue, plan breakdown, infra cost table, conversion opportunity, Stripe links (placeholder for live Stripe API). |
 | Admin Settings | `/admin/settings` | ✅ Built | Scanner env var status, plan limits table, deployment info, scanner IP allowlist. |
 
 ---
@@ -132,8 +156,9 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 | Route | Method | Status | Purpose |
 |---|---|---|---|
 | `/api/auth/callback` | GET | ✅ | Supabase OAuth/email code exchange |
-| `/api/scans` | POST | ✅ Stub | Validate + enqueue scan. Not yet connected to scanner service. |
-| `/api/verify` | POST | ✅ Stub | DNS/file ownership verification check |
+| `/api/urls` | POST | ✅ | Create URL record. Admin accounts bypass plan limits. Otherwise: free/starter→1 URL, monitor→5. Returns `{ id, url, verification_token }`. |
+| `/api/scans` | POST | ✅ | Validate + dispatch to scanner at `SCANNER_API_URL`. Returns `{ scan_id }`. |
+| `/api/verify` | POST | ✅ | Real DNS TXT / file / meta tag verification. Updates `urls` on success. |
 | `/api/billing/stripe-webhook` | POST | ✅ | Stripe webhook — updates profiles on subscription events |
 | `/api/billing/portal` | GET | ✅ | Stripe Customer Portal redirect (creates session, redirects user) |
 | `/api/webhooks` | POST | ✅ Stub | Vercel/Netlify deploy hook receiver |
@@ -149,12 +174,15 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 
 | Component | Location | Status | Notes |
 |---|---|---|---|
-| AppShell | `components/shared/AppShell.tsx` | ✅ | `'use client'` — fetches user/isAdmin/plan via browser Supabase client on mount. Shows "★ Admin panel" link if `is_admin`. Shows correct plan label (Free/Starter/Monitor) in bottom chip. |
-| AdminShell | `components/admin/AdminShell.tsx` | ✅ | Sidebar nav for all /admin routes. Same colour scheme as AppShell (uses `--bg-sub`). |
-| ReportActionsBar | `components/report/ReportActionsBar.tsx` | ✅ | `'use client'` — Share (copy public URL), Download PDF, Re-scan buttons for report page. |
+| AppShell | `components/shared/AppShell.tsx` | ✅ | `'use client'` — fetches user/isAdmin/plan via browser Supabase client on mount. |
+| AdminShell | `components/admin/AdminShell.tsx` | ✅ | Sidebar nav for all /admin routes. |
+| ReportActionsBar | `components/report/ReportActionsBar.tsx` | ✅ | `'use client'` — Share, Download PDF, Re-scan buttons. |
+| FindingsList | `components/report/FindingsList.tsx` | ✅ | `'use client'` — expand/collapse findings, severity sort, "expand all". |
+| ScanPollingView | `components/report/ScanPollingView.tsx` | ✅ | `'use client'` — polls `/api/scans?id=`, redirects on complete. |
+| OnboardFlow | `components/onboard/OnboardFlow.tsx` | ✅ | `'use client'` — full 4-step state machine for URL add + verify + scan. |
+| BadgeClient | `components/badge/BadgeClient.tsx` | ✅ | `'use client'` — copy state for badge embed codes. Empty state if no badge. |
+| RescanButton | `components/dashboard/RescanButton.tsx` | ✅ | `'use client'` — posts to `/api/scans` and redirects to report. |
 | ui/ | `components/ui/` | ❌ Empty | Design system components not yet extracted |
-| dashboard/ | `components/dashboard/` | ❌ Empty | Dashboard-specific components not yet extracted |
-| report/ | `components/report/` | ⚠️ Partial | `ReportActionsBar.tsx` extracted. Other report components not yet extracted |
 
 ---
 
@@ -179,7 +207,9 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 | Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
 | PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
 
-**To deploy:** `cd apps/scanner && fly launch --name vibe-check-scanner`, then set secrets and add Redis.
+**Deployed at:** `https://vibe-check-scanner.fly.dev` — health check `{"status":"ok","version":"0.1.0"}` confirmed live.
+
+**Local dev:** Set `SCANNER_API_URL=http://localhost:8000` in `apps/web/.env.local` and run scanner locally.
 
 **Constraint:** `consent.verify(url_id)` is called before any scanner runs. Non-negotiable.
 
@@ -212,33 +242,27 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 
 | Issue | Severity | Notes |
 |---|---|---|
-| `/activity` route missing | Medium | Dashboard links to it. Will 404. Needs a new page. |
 | Integrations buttons non-functional | Low | "Manage access" / "Disconnect" render but do nothing. OAuth flows not built. |
-| Billing upgrade/annual buttons non-functional | Low | "↑ Upgrade to Monitor" and "Switch to annual" are dead. Need checkout session route + Stripe products. |
-| Badge page uses hardcoded token | Low | `BADGE_TOKEN` constant. Not reading from real `badges` table. |
-| Report page uses hardcoded data | Low | Scan data, findings, grade are all static. Needs real data from Supabase. |
-| Dashboard uses hardcoded data | Low | URL cards, activity log, scan stats are static. Needs real data. |
-| Onboard URL submit not wired | Medium | Form exists, copy buttons work, but submitting a URL doesn't call any API or create a DB record. |
-| Scanner not yet deployed | High | Built and tested locally. Needs Fly.io app created + secrets set + deployed before scans run end-to-end. |
+| Billing upgrade buttons link to Stripe portal | Medium | No checkout session route yet. All upgrade/manage links go to `/api/billing/portal` which requires a Stripe customer ID. Need products created in Stripe + checkout session route. |
+| Scanner end-to-end | ✅ Confirmed | chorusproject.io passive scan completed successfully. Findings in DB. |
 | Stripe products not created | High | Can't take payments until products/prices exist in Stripe dashboard. |
-| `NEXT_PUBLIC_APP_URL` missing from .env.example | Low | Add this var. |
+| `NEXT_PUBLIC_APP_URL` missing from .env.example | Low | Used in `badge/page.tsx` and `billing/portal`. Should be `https://yourdomain.com`. |
 | Resend not wired | Low | API key env var exists but no emails sent anywhere (welcome, scan complete, CVE alert). |
-| `stripe_subscription_status` not written by webhook | Low | Column exists but `stripe-webhook/route.ts` needs updating to write it on subscription events. |
+| Badge issued automatically | Low | Scanner does not create a `badges` row on scan completion. Needs to be added to `jobs/tasks.py`. |
+| Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
 
 ---
 
 ## What to Build Next (Priority Order)
 
-1. **Deploy scanner to Fly.io** — `fly launch` in `apps/scanner/`, set secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SCANNER_INTERNAL_KEY`), add managed Redis, set `SCANNER_API_URL` in Vercel env. Then scans run end-to-end.
-2. **Onboard URL submit** — wire the form to create a `urls` row in Supabase and trigger ownership verification (`/api/verify`)
-3. **Wire report page to real data** — replace hardcoded scan/findings with Supabase query by `scanId`
-4. **Wire dashboard to real data** — replace placeholder URL cards and activity with real rows
-5. **`/activity` page** — linked from dashboard, currently 404s
-6. **Stripe products** — create Free/Starter/Monitor products in Stripe dashboard, add price IDs to env, build checkout session route
-7. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans
-8. **Badge real data** — read from `badges` table, create badge on first paid scan completion
-9. **PDF generation** — WeasyPrint renderer in scanner service
-10. **Active scanning** — add Nuclei integration once CLI tools are installed on the Fly.io machine
+1. ~~**End-to-end scan test**~~ ✅ **DONE** — chorusproject.io scanned successfully. 4 medium, 2 low, 1 pass. Findings written to DB and rendered in report UI.
+2. **Write activity_log + badge in scanner** — Add `activity_log` writes and `badges` row creation to `jobs/tasks.py` in scanner service. Deploy update.
+3. **Stripe products** — Create Free/Starter/Monitor products in Stripe dashboard. Add price IDs to env. Build `/api/billing/checkout` session creation route. Wire upgrade buttons.
+4. **NEXT_PUBLIC_APP_URL env var** — Add to `.env.example` and set in Vercel env. Required for badge embed codes and Stripe portal return URL.
+5. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans.
+6. **PDF generation** — WeasyPrint renderer in scanner service (`reports/renderer.py`).
+7. **Active scanning** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
+8. **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
 
 ---
 

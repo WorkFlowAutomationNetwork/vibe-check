@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (activeScan) {
-    return NextResponse.json({ error: 'Scan already in progress' }, { status: 409 })
+    return NextResponse.json({ error: 'Scan already in progress', scan_id: activeScan.id }, { status: 409 })
   }
 
   const { data: scan, error: insertError } = await supabase
