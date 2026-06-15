@@ -1,13 +1,33 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
-import { scanQueue } from '@/lib/redis/client'
-import { createHash, timingSafeEqual } from 'crypto'
+import { createHash } from 'crypto'
 
 const DeployPayloadSchema = z.object({
   url: z.string().url().optional(),
   ref: z.string().optional(),
 })
+
+async function dispatchToScanner(payload: {
+  scan_id: string
+  url_id: string
+  scan_type: string
+  user_id: string
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`${process.env.SCANNER_API_URL}/api/scans`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Key': process.env.SCANNER_INTERNAL_KEY ?? '',
+      },
+      body: JSON.stringify(payload),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get('x-vibe-check-key')
@@ -18,7 +38,6 @@ export async function POST(request: Request) {
   const supabase = createServiceClient()
   const keyHash = createHash('sha256').update(authHeader).digest('hex')
 
-  // Verify API key (simplified — full bcrypt check in auth layer)
   const { data: apiKey } = await supabase
     .from('api_keys')
     .select('id, user_id')
@@ -37,7 +56,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  // Find URLs for this user that have monitoring enabled
   const { data: urls } = await supabase
     .from('urls')
     .select('id')
@@ -52,7 +70,6 @@ export async function POST(request: Request) {
 
   let queued = 0
   for (const url of urls) {
-    // Skip if scan already running
     const { data: active } = await supabase
       .from('scans')
       .select('id')
@@ -69,8 +86,13 @@ export async function POST(request: Request) {
       .single()
 
     if (scan) {
-      await scanQueue.add('run-scan', { scan_id: scan.id, url_id: url.id, scan_type: 'active', user_id: apiKey.user_id })
-      queued++
+      const dispatched = await dispatchToScanner({
+        scan_id: scan.id,
+        url_id: url.id,
+        scan_type: 'active',
+        user_id: apiKey.user_id,
+      })
+      if (dispatched) queued++
     }
   }
 

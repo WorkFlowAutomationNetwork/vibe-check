@@ -1,12 +1,32 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
-import { scanQueue } from '@/lib/redis/client'
 
 const EnqueueSchema = z.object({
   url_id: z.string().uuid(),
   scan_type: z.enum(['passive', 'active', 'deep']),
 })
+
+async function dispatchToScanner(payload: {
+  scan_id: string
+  url_id: string
+  scan_type: string
+  user_id: string
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`${process.env.SCANNER_API_URL}/api/scans`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Key': process.env.SCANNER_INTERNAL_KEY ?? '',
+      },
+      body: JSON.stringify(payload),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
 
 export async function POST(request: Request) {
   const supabase = createServerClient()
@@ -25,7 +45,6 @@ export async function POST(request: Request) {
 
   const { url_id, scan_type } = parsed.data
 
-  // Verify URL belongs to user and is verified
   const { data: url } = await supabase
     .from('urls')
     .select('id, verified')
@@ -42,7 +61,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'URL not verified' }, { status: 403 })
   }
 
-  // Check for duplicate active scan (DB partial index also enforces this)
   const { data: activeScan } = await supabase
     .from('scans')
     .select('id')
@@ -54,7 +72,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Scan already in progress' }, { status: 409 })
   }
 
-  // Insert scan record
   const { data: scan, error: insertError } = await supabase
     .from('scans')
     .insert({
@@ -71,8 +88,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create scan' }, { status: 500 })
   }
 
-  // Enqueue to scanner service via BullMQ
-  await scanQueue.add('run-scan', { scan_id: scan.id, url_id, scan_type, user_id: user.id })
+  const dispatched = await dispatchToScanner({
+    scan_id: scan.id,
+    url_id,
+    scan_type,
+    user_id: user.id,
+  })
+
+  if (!dispatched) {
+    await supabase.from('scans').delete().eq('id', scan.id)
+    return NextResponse.json({ error: 'Scanner service unavailable' }, { status: 502 })
+  }
 
   return NextResponse.json({ scan_id: scan.id }, { status: 202 })
 }
