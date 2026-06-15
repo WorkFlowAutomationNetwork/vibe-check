@@ -2,7 +2,7 @@
 
 > **Living document.** Update this file whenever a major feature is added, a page is built, a migration is applied, or an integration is wired up. Claude reads this at the start of every session to understand current state.
 
-*Last updated: 2026-05-21 — build passing ✅*
+*Last updated: 2026-06-15 — scanner service skeleton built, 40/40 tests passing ✅*
 
 ---
 
@@ -21,9 +21,9 @@ A SaaS security auditing tool for "vibe-coded" apps. Users provide a URL, verify
 
 ## Current Build Phase
 
-> **Phase: Front-end complete. Scanner service not yet started.**
+> **Phase: Front-end complete. Scanner service skeleton built and tested. Ready for Fly.io deploy.**
 
-All Next.js pages are built and wired. The Supabase database is live with 14 migrations applied. The Python scanner service (`apps/scanner/`) is **scaffolded in the architecture plan but not yet implemented** — no Python files exist yet. Stripe is integrated at the config/client level but no products have been created in the Stripe dashboard.
+All Next.js pages are built and wired. The Supabase database is live with 14 migrations applied. The Python scanner service (`apps/scanner/`) is **fully scaffolded and implemented** with passive scan modules running and 40 tests passing. Web app now dispatches scans via HTTP to the scanner (BullMQ removed). Stripe is integrated at the config/client level but no products have been created in the Stripe dashboard.
 
 ---
 
@@ -33,8 +33,8 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 |---|---|---|
 | Next.js (apps/web) | ✅ Running | Next.js 14, App Router, TypeScript strict. Build passing. |
 | Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 14 migrations applied. |
-| Scanner (apps/scanner) | ❌ Not started | FastAPI + Celery + Redis — directory and files do not exist yet |
-| Redis | ❌ Not running locally | Required for scanner job queue. Docker config in `infra/docker-compose.yml` |
+| Scanner (apps/scanner) | ✅ Built | FastAPI + Celery + Redis. 40 tests passing. Passive scan (headers + TLS) implemented. Ready to deploy to Fly.io. |
+| Redis | ⚠️ Not deployed | Internal to scanner service on Fly.io. Not needed by web app. Local dev: run `redis-server` or Docker. |
 | Stripe | ⚠️ Client configured | `lib/stripe/client.ts` exists. No products created in Stripe dashboard yet. |
 | Resend (email) | ⚠️ Key needed | Referenced in `.env.example`. Not wired to any send calls yet. |
 
@@ -160,18 +160,28 @@ All Next.js pages are built and wired. The Supabase database is live with 14 mig
 
 ## Scanner Service (apps/scanner/)
 
-**Status: Not started.** The directory does not exist. Architecture is fully planned in `CLAUDE.md` and `docs/`.
+**Status: Built and tested. Awaiting Fly.io deployment.**
 
-When building, order is:
-1. FastAPI skeleton + health endpoint
-2. Celery + Redis queue setup
-3. Passive scan: `headers.py`, `tls.py` (no CLI tools needed)
-4. Ownership verification integration (`consent.py`)
-5. Nuclei integration (`nuclei.py`)
-6. Report grader (`grader.py`) + PDF renderer (`renderer.py`)
-7. SQLmap, DalFox, SecretFinder, prompt_injection module
+| Component | Status | Notes |
+|---|---|---|
+| FastAPI skeleton + health endpoint | ✅ | `GET /health` → `{status, version}` |
+| Auth middleware | ✅ | `X-Internal-Key` header, `hmac.compare_digest` |
+| POST /api/scans endpoint | ✅ | Receives from web app, enqueues Celery task |
+| Celery + Redis queue | ✅ | `jobs/config.py`, `jobs/worker.py`. 3 retries, exponential backoff |
+| `consent.verify()` | ✅ | Runs before every scan. Raises `ConsentError` if URL not verified. |
+| `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
+| `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
+| `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
+| `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
+| Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
+| fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
+| Tests | ✅ | 40/40 passing |
+| Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
+| PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
 
-**Constraint:** Every scan task calls `consent.verify(url)` before any tool runs.
+**To deploy:** `cd apps/scanner && fly launch --name vibe-check-scanner`, then set secrets and add Redis.
+
+**Constraint:** `consent.verify(url_id)` is called before any scanner runs. Non-negotiable.
 
 ---
 
@@ -209,7 +219,7 @@ When building, order is:
 | Report page uses hardcoded data | Low | Scan data, findings, grade are all static. Needs real data from Supabase. |
 | Dashboard uses hardcoded data | Low | URL cards, activity log, scan stats are static. Needs real data. |
 | Onboard URL submit not wired | Medium | Form exists, copy buttons work, but submitting a URL doesn't call any API or create a DB record. |
-| Scanner service doesn't exist | High | All scan-related functionality (actual scanning, queuing, results) is not implemented. |
+| Scanner not yet deployed | High | Built and tested locally. Needs Fly.io app created + secrets set + deployed before scans run end-to-end. |
 | Stripe products not created | High | Can't take payments until products/prices exist in Stripe dashboard. |
 | `NEXT_PUBLIC_APP_URL` missing from .env.example | Low | Add this var. |
 | Resend not wired | Low | API key env var exists but no emails sent anywhere (welcome, scan complete, CVE alert). |
@@ -219,16 +229,16 @@ When building, order is:
 
 ## What to Build Next (Priority Order)
 
-1. **`/activity` page** — linked from dashboard, currently 404s
-2. **Stripe products** — create Free/Starter/Monitor products in Stripe dashboard, add price IDs to env, build checkout session route
-3. **Onboard URL submit** — wire the form to create a `urls` row in Supabase and trigger ownership verification
-4. **Scanner service skeleton** — FastAPI + Celery + health endpoint, gets the Python service running
-5. **Passive scan** — headers, SSL, DNS (no CLI tools) — first real scan data
-6. **Wire report page to real data** — replace hardcoded scan/findings with Supabase query by `scanId`
-7. **Wire dashboard to real data** — replace placeholder URL cards and activity with real rows
-8. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans
-9. **Badge real data** — read from `badges` table, create badge on first paid scan completion
-10. **PDF generation** — WeasyPrint renderer in scanner service
+1. **Deploy scanner to Fly.io** — `fly launch` in `apps/scanner/`, set secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SCANNER_INTERNAL_KEY`), add managed Redis, set `SCANNER_API_URL` in Vercel env. Then scans run end-to-end.
+2. **Onboard URL submit** — wire the form to create a `urls` row in Supabase and trigger ownership verification (`/api/verify`)
+3. **Wire report page to real data** — replace hardcoded scan/findings with Supabase query by `scanId`
+4. **Wire dashboard to real data** — replace placeholder URL cards and activity with real rows
+5. **`/activity` page** — linked from dashboard, currently 404s
+6. **Stripe products** — create Free/Starter/Monitor products in Stripe dashboard, add price IDs to env, build checkout session route
+7. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans
+8. **Badge real data** — read from `badges` table, create badge on first paid scan completion
+9. **PDF generation** — WeasyPrint renderer in scanner service
+10. **Active scanning** — add Nuclei integration once CLI tools are installed on the Fly.io machine
 
 ---
 
@@ -243,10 +253,27 @@ apps/web/
   lib/supabase/server.ts             ← createServerClient() + createServiceClient()
   lib/supabase/client.ts             ← createClient() (browser only)
   lib/stripe/client.ts               ← Stripe instance
-  lib/redis/client.ts                ← BullMQ/ioredis client
   middleware.ts                      ← Route protection
   components/shared/AppShell.tsx     ← Main app sidebar layout
   components/admin/AdminShell.tsx    ← Admin sidebar layout
+
+apps/scanner/
+  api/main.py                        ← FastAPI app entry
+  api/routes/health.py               ← GET /health (Fly.io health check)
+  api/routes/scans.py                ← POST /api/scans (receives from web app)
+  api/middleware/auth.py             ← X-Internal-Key header auth (hmac.compare_digest)
+  jobs/config.py                     ← Celery app + Redis broker config
+  jobs/tasks.py                      ← run_scan Celery task + _execute_scan (testable logic)
+  jobs/worker.py                     ← Celery worker entry point
+  scanners/base.py                   ← Finding dataclass + BaseScanner ABC
+  scanners/headers.py                ← HTTP security header checks (httpx)
+  scanners/tls.py                    ← TLS/SSL checks (sslyze)
+  lib/consent.py                     ← consent.verify() — MUST run before any scan
+  lib/supabase.py                    ← supabase-py service role client singleton
+  reports/grader.py                  ← grade(findings) → (letter, score)
+  fly.toml                           ← Fly.io config (web + worker processes)
+  Dockerfile                         ← Python 3.12-slim image
+  tests/                             ← 40 tests, all passing
 
 supabase/
   migrations/                        ← All 14 migrations (applied)
