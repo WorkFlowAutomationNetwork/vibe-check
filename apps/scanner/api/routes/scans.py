@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from api.middleware.auth import verify_internal_key
-from queue.tasks import run_scan
+from jobs.tasks import run_scan
 
 router = APIRouter()
 

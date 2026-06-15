@@ -6,7 +6,7 @@ from lib.supabase import get_supabase
 from reports.grader import grade
 from scanners.headers import HeadersScanner
 from scanners.tls import TLSScanner
-from queue.config import celery_app
+from jobs.config import celery_app
 
 
 def _now() -> str:
@@ -17,8 +17,8 @@ def _mark_scan(scan_id: str, **fields) -> None:
     get_supabase().table("scans").update(fields).eq("id", scan_id).execute()
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
-def run_scan(self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
+def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
+    """Business logic for a scan job — separated so tests can call it directly."""
     _mark_scan(scan_id, status="running", started_at=_now())
 
     try:
@@ -52,4 +52,9 @@ def run_scan(self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> N
 
     except Exception as exc:
         _mark_scan(scan_id, status="failed", completed_at=_now())
-        raise self.retry(exc=exc)
+        raise task_self.retry(exc=exc)
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+def run_scan(self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
+    _execute_scan(self, scan_id, url_id, scan_type, user_id)
