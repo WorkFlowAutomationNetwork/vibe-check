@@ -9,7 +9,12 @@ _SCRIPT_SRC_RE = re.compile(r'<script[^>]+src=["\']([^"\']+)["\']', re.IGNORECAS
 def fetch_page_and_scripts(
     url: str,
     timeout: float,
+    # Secrets/config values almost always land in the first few bundles a page
+    # loads (main entry chunk, inline config) rather than deep in vendor code,
+    # so a small cap keeps this cheap without losing meaningful coverage.
     max_scripts: int = 10,
+    # Per-blob cap (page HTML and each script body) — keeps memory/CPU bounded
+    # when handed an untrusted URL that could point at a huge response.
     max_bytes: int = 500_000,
 ) -> list[str]:
     """Fetch the page HTML plus same-origin <script src> bundles.
@@ -26,8 +31,11 @@ def fetch_page_and_scripts(
     except httpx.RequestError:
         return blobs
 
+    if page.status_code != 200:
+        return blobs
+
     html = page.text
-    blobs.append(html)
+    blobs.append(html[:max_bytes])
 
     script_srcs = _SCRIPT_SRC_RE.findall(html)[:max_scripts]
 
