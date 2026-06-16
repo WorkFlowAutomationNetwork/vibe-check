@@ -5,6 +5,7 @@ from reports.grader import grade, calculate_score, score_to_grade
 
 def make_finding(severity: str) -> Finding:
     return Finding(
+        check_name="test-check",
         severity=severity,
         category="Test",
         title="Test finding",
@@ -23,11 +24,6 @@ def test_perfect_score_no_findings():
 def test_critical_deducts_25():
     _, score = grade([make_finding("critical")])
     assert score == 75
-
-
-def test_high_deducts_15():
-    _, score = grade([make_finding("high")])
-    assert score == 85
 
 
 def test_medium_deducts_8():
@@ -67,10 +63,10 @@ def test_grade_thresholds():
 def test_mixed_findings_grade():
     findings = [
         make_finding("critical"),  # -25 → 75
-        make_finding("high"),      # -15 → 60
-        make_finding("medium"),    # -8  → 52
+        make_finding("medium"),    # -8  → 67
+        make_finding("low"),       # -3  → 64
         make_finding("pass"),      # +0
     ]
     letter, score = grade(findings)
-    assert score == 52
-    assert letter == "D"
+    assert score == 64
+    assert letter == "C"

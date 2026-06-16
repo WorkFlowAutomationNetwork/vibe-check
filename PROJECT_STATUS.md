@@ -220,6 +220,8 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `consent.verify()` | ✅ | Runs before every scan. Raises `ConsentError` if URL not verified. |
 | `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
 | `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
+| `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Runs on `active`/`deep` tiers only. |
+| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase exposure check. `deep` has no additional scanners yet. |
 | `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
@@ -273,7 +275,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
 | Admin unlimited-scan bypass | ✅ Confirmed secure | `can_run_scan_type()`/`can_add_url()` (migration 014) already bypass for `is_admin = true` at the RLS layer — verified end-to-end by inserting a `deep` scan as the admin account on the `free` plan. Closed a related hole in migration 017: the `profiles` "update own row" RLS policy had no column restriction, so any user could have PATCHed their own `is_admin`/`plan`/`stripe_*` fields directly. Now blocked by a `BEFORE UPDATE` trigger unless `auth.role() = 'service_role'`. |
 | No exposed-secrets scanner | Medium | `secrets` category exists in `FindingCategory` but no `scanners/secrets.py` module exists. JS bundles aren't checked for leaked API keys/tokens. |
-| No Supabase/PostgREST exposed-data check | High | No check for publicly readable `/rest/v1/*` endpoints on apps without RLS (the CVE-2025-48757 Lovable pattern). High-relevance gap for our Supabase-using target audience. Source: r/ChatGPTCoding post review, 2026-06-16. |
+| Supabase/PostgREST exposed-data check | ✅ Built | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. |
 | No SQLi/XSS/rate-limit checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. No probe for missing rate limiting on forms/login (10k fake registration / spam vector called out repeatedly in Reddit post). |
 
 ---

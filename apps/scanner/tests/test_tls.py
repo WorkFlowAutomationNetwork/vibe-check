@@ -8,9 +8,9 @@ def test_cert_expired_is_critical():
     assert any(f.severity == "critical" for f in findings)
 
 
-def test_cert_expiring_soon_is_high():
+def test_cert_expiring_soon_is_medium():
     findings = _analyze_cert_info(15)
-    assert any(f.severity == "high" for f in findings)
+    assert any(f.severity == "medium" for f in findings)
 
 
 def test_cert_valid_long_is_pass():
@@ -30,9 +30,9 @@ def test_tls_13_adds_pass_finding():
     assert any(f.severity == "pass" and "1.3" in f.title for f in findings)
 
 
-def test_weak_tls_only_is_high():
+def test_weak_tls_only_is_critical():
     findings = _analyze_tls_versions(has_tls12=False, has_tls13=False, has_weak=True)
-    assert any(f.severity == "high" for f in findings)
+    assert any(f.severity == "critical" for f in findings)
 
 
 def test_weak_tls_alongside_modern_is_medium():

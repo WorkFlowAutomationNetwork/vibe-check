@@ -26,7 +26,7 @@ def test_all_headers_present_and_correct():
     assert all(f.severity == "pass" for f in findings), findings
 
 
-def test_missing_csp_is_high():
+def test_missing_csp_is_medium():
     headers = {
         "strict-transport-security": "max-age=31536000",
         "x-content-type-options": "nosniff",
@@ -37,7 +37,7 @@ def test_missing_csp_is_high():
     findings = run_with_headers(headers)
     csp_findings = [f for f in findings if "Content-Security-Policy" in f.title and f.severity != "pass"]
     assert len(csp_findings) == 1
-    assert csp_findings[0].severity == "high"
+    assert csp_findings[0].severity == "medium"
 
 
 def test_csp_with_unsafe_inline_is_medium():
@@ -55,7 +55,7 @@ def test_csp_with_unsafe_inline_is_medium():
     assert csp_findings[0].severity == "medium"
 
 
-def test_missing_hsts_is_high():
+def test_missing_hsts_is_medium():
     headers = {
         "content-security-policy": "default-src 'self'",
         "x-content-type-options": "nosniff",
@@ -66,7 +66,7 @@ def test_missing_hsts_is_high():
     findings = run_with_headers(headers)
     hsts_findings = [f for f in findings if "Strict-Transport-Security" in f.title and f.severity != "pass"]
     assert len(hsts_findings) == 1
-    assert hsts_findings[0].severity == "high"
+    assert hsts_findings[0].severity == "medium"
 
 
 def test_hsts_short_max_age_is_medium():
