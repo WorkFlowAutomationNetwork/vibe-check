@@ -20,6 +20,26 @@
 
 ---
 
+Pricing structure review:
+ reprice:
+
+  ┌─────────┬──────────────┬────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │  Tier   │   Current    │   Suggested    │                                                               Reasoning                                                               │
+  ├─────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Free    │ passive scan │ keep           │ Good top-of-funnel, no change                                                                                                         │
+  ├─────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Starter │ $9 one-off   │ $29–49 one-off │ Real security report, real tools — $9 undersells it. $39 is still impulse-buy territory for an indie founder who just shipped.        │
+  ├─────────┼──────────────┼────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Monitor │ $19/mo       │ $39–49/mo      │ Continuous monitoring with CVE alerts and webhook re-scans is genuinely valuable. $19 is below what your infra costs to run at scale. │
+  └─────────┴──────────────┴────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  The indie founder angle cuts both ways. Yes, they're price-sensitive — but they're also the person who lost sleep shipping something with AI and genuinely doesn't know if it's safe. They'll pay $39 for peace of mind. They might actually distrust $9.
+
+  One other consideration: the current $19/month Monitor plan only generates ~$228/year per customer. At that rate you need a lot of subscribers before it's a real business. $39–49/month puts you at $468–588/year per customer, which changes the unit economics
+  significantly.
+
+  Worth testing — you could A/B the landing page at $39 vs $9 and see if conversion rate drops. My bet is it barely moves.
+
 ## What is Vibe-Check?
 
 A SaaS security auditing tool for "vibe-coded" apps. Users provide a URL, verify ownership, and get a graded security report covering headers, SSL/TLS, exposed endpoints, prompt injection vulnerabilities, dependency CVEs, and more.
@@ -81,6 +101,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `20260521000014_plan_enforcement.sql` | `plan_limits` table, guard functions (`can_add_url`, `can_run_scan_type`, etc.), `my_entitlements` view | ✅ Applied |
 | `20260521000015_indexes_storage_stripe_status.sql` | `stripe_subscription_status` on profiles, 9 missing FK indexes, `reports` Storage bucket + RLS, `badge_status` view | ✅ Applied |
 | `20260616000016_admin_account.sql` | Auto-sets `is_admin=true` for `patrickcampbell@workflowautomationnetwork.com` on signup (BEFORE INSERT trigger on profiles). Also runs UPDATE in case account already exists. | ✅ Applied |
+| `20260616000017_protect_profile_sensitive_fields.sql` | `BEFORE UPDATE` trigger on `profiles` blocking client-side changes to `is_admin`, `plan`, `stripe_customer_id`, `stripe_subscription_id`, `stripe_subscription_status` unless `auth.role() = 'service_role'`. Closes a privilege-escalation hole where any signed-in user could PATCH their own profile via the Supabase client and grant themselves admin/paid-plan status. | ✅ Applied |
 
 ### Key schema facts
 - `profiles.plan` = `'free' | 'starter' | 'monitor'`
@@ -250,6 +271,10 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Resend not wired | Low | API key env var exists but no emails sent anywhere (welcome, scan complete, CVE alert). |
 | Badge issued automatically | Low | Scanner does not create a `badges` row on scan completion. Needs to be added to `jobs/tasks.py`. |
 | Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
+| Admin unlimited-scan bypass | ✅ Confirmed secure | `can_run_scan_type()`/`can_add_url()` (migration 014) already bypass for `is_admin = true` at the RLS layer — verified end-to-end by inserting a `deep` scan as the admin account on the `free` plan. Closed a related hole in migration 017: the `profiles` "update own row" RLS policy had no column restriction, so any user could have PATCHed their own `is_admin`/`plan`/`stripe_*` fields directly. Now blocked by a `BEFORE UPDATE` trigger unless `auth.role() = 'service_role'`. |
+| No exposed-secrets scanner | Medium | `secrets` category exists in `FindingCategory` but no `scanners/secrets.py` module exists. JS bundles aren't checked for leaked API keys/tokens. |
+| No Supabase/PostgREST exposed-data check | High | No check for publicly readable `/rest/v1/*` endpoints on apps without RLS (the CVE-2025-48757 Lovable pattern). High-relevance gap for our Supabase-using target audience. Source: r/ChatGPTCoding post review, 2026-06-16. |
+| No SQLi/XSS/rate-limit checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. No probe for missing rate limiting on forms/login (10k fake registration / spam vector called out repeatedly in Reddit post). |
 
 ---
 
@@ -263,6 +288,9 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 6. **PDF generation** — WeasyPrint renderer in scanner service (`reports/renderer.py`).
 7. **Active scanning** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
 8. **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
+9. **Supabase/PostgREST exposed-data check** — New `endpoints` category check: probe `/rest/v1/<table>` for common table names without an auth header, flag `critical` if data returned without RLS. Highest-value addition given target audience.
+10. **Secrets scanner** — `scanners/secrets.py` wrapping SecretFinder against JS bundles loaded by the page; flag exposed API keys/tokens as `critical`/`high` in the `secrets` category.
+11. **Rate-limit probe** — New check (likely under `endpoints` or a new `auth`-adjacent category): send N rapid requests to login/contact/signup forms, flag `medium` if no 429/throttling observed.
 
 ---
 
