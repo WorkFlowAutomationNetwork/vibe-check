@@ -199,6 +199,8 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `consent.verify()` | ✅ | Runs before every scan. Raises `ConsentError` if URL not verified. |
 | `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
 | `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
+| `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Runs on `active`/`deep` tiers only. |
+| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase exposure check. `deep` has no additional scanners yet. |
 | `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
@@ -250,6 +252,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Resend not wired | Low | API key env var exists but no emails sent anywhere (welcome, scan complete, CVE alert). |
 | Badge issued automatically | Low | Scanner does not create a `badges` row on scan completion. Needs to be added to `jobs/tasks.py`. |
 | Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
+| Supabase/PostgREST exposed-data check | ✅ Built | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. |
 
 ---
 
