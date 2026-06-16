@@ -127,3 +127,11 @@ def test_deep_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
         _execute_scan(FakeSelf(), "scan-1", "url-1", "deep", "user-1")
 
     ms.assert_called_once_with("https://example.com")
+
+
+def test_deep_tier_matches_active_tier():
+    """Encodes the invariant that `deep` is currently a pure extension of
+    `active` — if someone adds a scanner to one tier's list without
+    updating the other, this test catches the drift."""
+    from jobs.tasks import _scanners_for_tier
+    assert _scanners_for_tier("deep") == _scanners_for_tier("active")

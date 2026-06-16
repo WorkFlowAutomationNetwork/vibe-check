@@ -21,13 +21,23 @@ def _mark_scan(scan_id: str, **fields) -> None:
 def _scanners_for_tier(scan_type: str) -> list:
     """Cumulative tiers: active runs everything passive runs, plus more;
     deep runs everything active runs, plus more (currently identical to
-    active — this is the seam for future intrusive scanners)."""
+    active — this is the seam for future intrusive scanners).
+
+    The lists below are built fresh on every call (not module-level
+    constants) so that `unittest.mock.patch("jobs.tasks.HeadersScanner")`
+    and friends still take effect in tests — patching rebinds the bare
+    name in this module's globals, and that rebinding is only picked up
+    if the lookup happens at call time."""
+    passive = [HeadersScanner, TLSScanner]
+    active = [*passive, SupabaseExposureScanner]
+    deep = [*active]  # no deep-only scanners yet — seam for Nuclei etc.
+
     tiers = {
-        "passive": [HeadersScanner, TLSScanner],
-        "active": [HeadersScanner, TLSScanner, SupabaseExposureScanner],
-        "deep": [HeadersScanner, TLSScanner, SupabaseExposureScanner],
+        "passive": passive,
+        "active": active,
+        "deep": deep,
     }
-    return tiers.get(scan_type, tiers["passive"])
+    return tiers.get(scan_type, passive)
 
 
 def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
