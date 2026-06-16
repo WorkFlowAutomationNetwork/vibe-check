@@ -115,7 +115,7 @@ export default async function ReportPage({ params }: Props) {
               {scan.checks_total && <span>checks <b>{scan.checks_total}</b></span>}
             </div>
           </div>
-          <ReportActionsBar scanId={params.scanId} />
+          <ReportActionsBar scanId={params.scanId} urlId={scan.url_id} />
         </div>
 
         {scan.status === 'failed' ? (

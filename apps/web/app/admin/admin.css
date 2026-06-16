@@ -134,8 +134,15 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-user-chip-row {
+  display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .admin-avatar {
@@ -155,6 +162,7 @@
 .admin-who {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
@@ -170,6 +178,22 @@
 .admin-who small {
   font-size: 11px;
   color: var(--ink-mute);
+}
+
+.admin-sign-out-btn {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-mute);
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.admin-sign-out-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* ====== ADMIN BODY ====== */

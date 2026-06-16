@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ScanTypePicker, { type ScanType } from '@/components/scan/ScanTypePicker'
+import { useScanEligibility } from '@/lib/hooks/useScanEligibility'
 
 type Step = 'url_input' | 'verify' | 'run_scan' | 'scan_pending'
 type VerifyMethod = 'dns' | 'file' | 'meta'
@@ -18,6 +20,7 @@ interface State {
   verifyStatus: VerifyStatus
   scanId: string | null
   scanStatus: ScanStatus
+  scanType: ScanType
   error: string | null
 }
 
@@ -30,12 +33,14 @@ const INITIAL_STATE: State = {
   verifyStatus: 'idle',
   scanId: null,
   scanStatus: 'idle',
+  scanType: 'passive',
   error: null,
 }
 
 export default function OnboardFlow() {
   const router = useRouter()
   const [state, setState] = useState<State>(INITIAL_STATE)
+  const { allowedScanTypes, isAdmin } = useScanEligibility()
   const [urlInput, setUrlInput] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -127,7 +132,7 @@ export default function OnboardFlow() {
       const res = await fetch('/api/scans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_id: state.urlId, scan_type: 'passive' }),
+        body: JSON.stringify({ url_id: state.urlId, scan_type: state.scanType }),
       })
       const data = await res.json()
 
@@ -374,8 +379,8 @@ export default function OnboardFlow() {
                 <li>
                   <span className="nl-num">01</span>
                   <div>
-                    <b>We pick a scan mode</b>
-                    <small>Passive for now — active scanning on paid plans.</small>
+                    <b>You pick a scan mode</b>
+                    <small>Passive is free on every plan. Active and Deep unlock on paid plans.</small>
                   </div>
                 </li>
                 <li>
@@ -413,13 +418,13 @@ export default function OnboardFlow() {
             </div>
           )}
 
-          <div style={{ background: 'var(--bg-card)', border: '1.5px solid var(--line)', borderRadius: 'var(--radius)', padding: '20px 24px', marginBottom: 24 }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginBottom: 8 }}>SCAN TYPE</div>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Passive scan</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-              Checks headers, TLS/SSL, and DNS configuration. No active probing. Free on all plans.
-            </div>
-          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginBottom: 10 }}>SCAN TYPE</div>
+          <ScanTypePicker
+            allowedScanTypes={allowedScanTypes}
+            isAdmin={isAdmin}
+            selected={state.scanType}
+            onSelect={(scanType) => set({ scanType })}
+          />
 
           <button
             className="btn btn-primary"

@@ -54,12 +54,13 @@ export default async function DashboardPage() {
 
   const [{ data: urls }, { data: profile }] = await Promise.all([
     supabase.from('urls').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan, is_admin').eq('id', user.id).single(),
   ])
 
   const allUrls: UrlRow[] = urls ?? []
   const plan = (profile?.plan ?? 'free') as string
-  const urlLimit = PLAN_URL_LIMITS[plan] ?? 1
+  const isAdmin = profile?.is_admin ?? false
+  const urlLimit = isAdmin ? Infinity : (PLAN_URL_LIMITS[plan] ?? 1)
   const urlIds = allUrls.map(u => u.id)
 
   let allScans: ScanRow[] = []
@@ -146,7 +147,7 @@ export default async function DashboardPage() {
           <div className="qstat">
             <div className="qlab">URLs monitored</div>
             <div className="qnum">{allUrls.length}</div>
-            <div className="qdelta">{allUrls.length} / {urlLimit} on {plan} plan</div>
+            <div className="qdelta">{allUrls.length} / {isAdmin ? '∞' : urlLimit} on {isAdmin ? 'admin' : plan} plan</div>
           </div>
           <div className="qstat">
             <div className="qlab">Scans this month</div>

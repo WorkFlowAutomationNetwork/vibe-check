@@ -2,7 +2,7 @@
 
 > **Living document.** Update this file whenever a major feature is added, a page is built, a migration is applied, or an integration is wired up. Claude reads this at the start of every session to understand current state.
 
-*Last updated: 2026-06-16 — admin dashboard built · admin bypass for plan limits · analytics + revenue pages added*
+*Last updated: 2026-06-16 — scan-tier branching + Supabase exposure scanner merged · admin profile RLS hole closed · admin user-detail 500 fixed (illegal RSC event handler) · `scans.type`→`scan_type` bug fixed · sign-out added app-wide · product roadmap re-prioritized after report/scanner critique (Sprint 1: reporting reframe + stack detection; Sprint 2: secrets + storage scanners; IDOR/multi-tenant/prompt-injection deprioritized)*
 
 ---
 
@@ -17,6 +17,23 @@
 **File:** `apps/scanner/scanners/headers.py`  
 **Root cause:** No check for `x-powered-by`, `server`, or `x-fah-adapter` headers that expose the tech stack. Confirmed present in chorusproject.io responses (`x-powered-by: Next.js`, `x-fah-adapter: nextjs-14.0.21`).  
 **Fix:** Add `_check_tech_disclosure()` method in `headers.py` that flags these headers as `low` severity findings with category `headers`.
+
+---
+
+## 🧰 Local Dev Troubleshooting Notes
+
+Environment quirks that look like app bugs but aren't — check here before debugging code.
+
+### DNS ownership verification ("Check now") fails locally even with a correct TXT record
+**Symptom:** `/api/verify` with `method: 'dns'` returns `verified: false` even though the TXT record (`_vibecheck.<domain>` = `vc-verify=<token>`) is set correctly.
+**Root cause:** `checkDns()` (`app/api/verify/route.ts`) uses Node's `dns.resolveTxt()`, which resolves through whatever DNS server your local machine/OS is configured to use — not a fixed public resolver. If that's a local Pi-hole or other caching resolver, it can hold a stale `NXDOMAIN` from before the record propagated and never re-check.
+**How to confirm:** query the record directly against a known-good public resolver and compare to your default resolver, e.g.:
+```
+nslookup -type=TXT _vibecheck.<domain> 8.8.8.8     # Google — should show the record
+nslookup -type=TXT _vibecheck.<domain>             # your default resolver — may show NXDOMAIN
+```
+If the public resolver sees it but your default one doesn't, it's a local caching issue, not a code or DNS-config bug.
+**Fix:** flush the local resolver's cache (e.g. Pi-hole: Tools → Flush Network Table, or `pihole restartdns reload` on the Pi-hole host) and retry. Not an issue in production — Vercel doesn't route through a home resolver.
 
 ---
 
@@ -162,7 +179,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 |---|---|---|---|
 | Admin Dashboard | `/admin/dashboard` | ✅ Built | Platform stats via `admin_stats` view. Recent scans table. Reads `scan_type` correctly. |
 | Admin Users | `/admin/users` | ✅ Built | Paginated user list with search. Uses `/api/admin/users` route. |
-| Admin User Detail | `/admin/users/[userId]` | ✅ Built | Edit user profile, plan, admin flag. Send reset email. Confirm email. Delete user. |
+| Admin User Detail | `/admin/users/[userId]` | ✅ Built | Edit user profile, plan, admin flag. Send reset email. Confirm email. Delete user. Fixed 2026-06-16: page crashed with a 500 because an `onClick`/`confirm()` handler was passed directly to a `<button>` in this Server Component (RSC can't serialize event handlers) — extracted into `components/admin/DeleteAccountForm.tsx` (client component). Also fixed: "Recent Scans" table queried `scans.type` (column doesn't exist, real name is `scan_type`) so it silently always rendered empty — corrected to `scan_type`. |
 | Admin Create User | `/admin/users/new` | ✅ Built | Create user form with email + password. |
 | Admin Subscriptions | `/admin/subscriptions` | ✅ Built | Paying accounts overview. |
 | Admin Scans | `/admin/scans` | ✅ Built | All scans with type/status filter and pagination. Reads `scan_type` correctly. |
@@ -203,6 +220,8 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | OnboardFlow | `components/onboard/OnboardFlow.tsx` | ✅ | `'use client'` — full 4-step state machine for URL add + verify + scan. |
 | BadgeClient | `components/badge/BadgeClient.tsx` | ✅ | `'use client'` — copy state for badge embed codes. Empty state if no badge. |
 | RescanButton | `components/dashboard/RescanButton.tsx` | ✅ | `'use client'` — posts to `/api/scans` and redirects to report. |
+| SignOutButton | `components/shared/SignOutButton.tsx` | ✅ | `'use client'` — calls `supabase.auth.signOut()` (default `global` scope, revokes refresh token server-side) then redirects to `/sign-in`. Added 2026-06-16 to both `AppShell` and `AdminShell` — previously there was no sign-out anywhere in the app. |
+| DeleteAccountForm | `components/admin/DeleteAccountForm.tsx` | ✅ | `'use client'` — wraps the admin "Delete account" form with a `confirm()` prompt on submit. Extracted from `admin/users/[userId]/page.tsx` because the original inline `onClick` handler was illegal in that Server Component and caused a 500. |
 | ui/ | `components/ui/` | ❌ Empty | Design system components not yet extracted |
 
 ---
@@ -226,7 +245,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
 | fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
-| Tests | ✅ | 40/40 passing |
+| Tests | ✅ | 54/54 passing |
 | Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
 | PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
 
@@ -258,6 +277,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 - Admin guard: `app/admin/layout.tsx` checks `is_admin = true` via service client. Non-admins get 403 page.
 - Admin user: `patrickcampbell@workflowautomationnetwork.com.au`
 - Auth helpers: `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (server + service role), `lib/supabase/middleware.ts`
+- Sign out: `components/shared/SignOutButton.tsx`, wired into both `AppShell` (user sidebar) and `AdminShell` (admin sidebar). Calls `supabase.auth.signOut()` with the default `global` scope, which revokes the refresh token server-side — the user must log in again on next visit, not just locally cleared.
 
 ---
 
@@ -282,17 +302,40 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 
 ## What to Build Next (Priority Order)
 
-1. ~~**End-to-end scan test**~~ ✅ **DONE** — chorusproject.io scanned successfully. 4 medium, 2 low, 1 pass. Findings written to DB and rendered in report UI.
-2. **Write activity_log + badge in scanner** — Add `activity_log` writes and `badges` row creation to `jobs/tasks.py` in scanner service. Deploy update.
-3. **Stripe products** — Create Free/Starter/Monitor products in Stripe dashboard. Add price IDs to env. Build `/api/billing/checkout` session creation route. Wire upgrade buttons.
-4. **NEXT_PUBLIC_APP_URL env var** — Add to `.env.example` and set in Vercel env. Required for badge embed codes and Stripe portal return URL.
-5. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans.
-6. **PDF generation** — WeasyPrint renderer in scanner service (`reports/renderer.py`).
-7. **Active scanning** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
-8. **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
-9. **Supabase/PostgREST exposed-data check** — New `endpoints` category check: probe `/rest/v1/<table>` for common table names without an auth header, flag `critical` if data returned without RLS. Highest-value addition given target audience.
-10. **Secrets scanner** — `scanners/secrets.py` wrapping SecretFinder against JS bundles loaded by the page; flag exposed API keys/tokens as `critical`/`high` in the `secrets` category.
-11. **Rate-limit probe** — New check (likely under `endpoints` or a new `auth`-adjacent category): send N rapid requests to login/contact/signup forms, flag `medium` if no 429/throttling observed.
+> **2026-06-16 product review** — full critique exchanged and converged (see git history of this file for the discarded "run all scanners free, gate visibility" idea — rejected: breaks the free/paid compute boundary and increases legal/consent exposure for zero revenue). Decisions below supersede any earlier draft of this list. Key calls:
+> - Free tier stays **passive-only** for execution, but must *feel* valuable — positive findings + named "Active Scans Available" categories, not a crippled teaser.
+> - Findings copy should be reframed around the actual vibe-coder stack (Supabase RLS, Next.js/Vercel disclosure) instead of generic OWASP language.
+> - Generic IDOR / multi-tenant-leakage / auth-bypass scanners are **deprioritized indefinitely** — these require authenticated test credentials per target app, which is a different product (pentest-style), not a generic scanner. Revisit only if/when there's a plan for users to safely hand over test credentials.
+> - Rate-limit probing must stay lightweight (5-10 requests, not "unlimited") and paid-tier only — anything more risks being read as abusive traffic against a third party's production site.
+
+### Sprint 1 — Reporting & free-tier value (no new scanners, mostly templating)
+1. **Reporting reframe** — Replace flat severity counts with Critical/High/Medium/Configuration-Improvement buckets. Each finding gets What it is / What we checked / Impact / Fix sections.
+2. **Positive findings section** — Surface passing checks (✓ TLS 1.3, ✓ SSL cert valid, ✓ no secrets found) instead of an all-negative report.
+3. **Tech/stack disclosure check** — Closes existing Known Issue #2 above: add `_check_tech_disclosure()` to `headers.py`, checking `x-powered-by`/`server`/`x-fah-adapter` etc. This is the data source for stack detection, not a new scanner.
+4. **"Detected Stack" + "Active Scans Available" block on free report** — Uses the tech-disclosure data plus a static category list (Database Exposure, Secrets Exposure, Authentication Review) to show what upgrading unlocks, without running those scans.
+5. **Copy pass** — Reframe findings in Supabase/Next.js/Vercel/Cursor-ecosystem terms where applicable (e.g. "Common AI-App Risk: your app uses Supabase — many AI-generated apps accidentally expose customer data via misconfigured RLS").
+
+### Sprint 2 — New scanners (paid tiers)
+6. **Secrets scanner** — `scanners/secrets.py`, scans JS bundles loaded by the page for OpenAI/Stripe/AWS/Supabase-service-key/Firebase credential patterns. Flag `critical`/`high` in the `secrets` category. Highest-value new scanner — pair with Supabase exposure as the flagship "we find what vibe-coding tools leak" pitch.
+7. **Supabase/PostgREST exposed-data check refinement** — already built (`supabase_exposure.py`); extend table-name coverage if needed.
+8. **Public storage exposure (Supabase Storage only for now)** — extend the existing Supabase-exposure auth pattern to check public bucket listing via the anon key. Do **not** bundle generic S3/R2/Firebase bucket discovery into this — that's a different problem (bucket-name guessing) and a separate task if pursued later.
+
+### Sprint 3 — Operational depth
+9. **Rate-limit probe** — 5-10 requests against login/signup/contact forms, flag `medium` if no throttling observed. Paid-tier only.
+10. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans.
+11. **CVE monitoring** — ties into Monitor tier's "continuous protection" pitch.
+
+### Deprioritized / not planned
+- Generic IDOR detection, multi-tenant data leakage testing, generic auth-bypass testing, prompt-injection testing — all require authenticated workflows or app-specific context a generic scanner can't safely infer. Revisit if the product grows a pentest-style authenticated-testing tier.
+
+### Other outstanding items (unrelated to the above review, still pending)
+- **Write activity_log + badge in scanner** — Add `activity_log` writes and `badges` row creation to `jobs/tasks.py` in scanner service. Deploy update.
+- **Stripe products** — Create Free/Starter/Monitor products in Stripe dashboard. Add price IDs to env. Build `/api/billing/checkout` session creation route. Wire upgrade buttons.
+- **NEXT_PUBLIC_APP_URL env var** — Add to `.env.example` and set in Vercel env. Required for badge embed codes and Stripe portal return URL.
+- **PDF generation** — WeasyPrint renderer in scanner service (`reports/renderer.py`).
+- **Active scanning (Nuclei)** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
+- **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
+- ~~**End-to-end scan test**~~ ✅ **DONE** — chorusproject.io scanned successfully. 4 medium, 2 low, 1 pass. Findings written to DB and rendered in report UI.
 
 ---
 
@@ -339,3 +382,8 @@ design/
   Vibe-Check Landing.html            ← Marketing landing reference
   Vibe-Check Landing (standalone).html ← Standalone marketing reference
 ```
+## extra note:
+When adding a url, if the user hasn't successfully ran a check they should be able to remove the url and add another so that if they make a mistake they aren't blocked out. If they have run a scan then they shoudn't have the option to remove the url. 
+starting to think running the free scan shoudn't be part of the onbaording process, they should sign up with their details, maybe run them through a clean step by step of how it works but not require them to enter it all, once they are signed in and verified then they should be able to run the free scan. 
+
+When finished need to reveiw the home page to ensure the information is still accurate

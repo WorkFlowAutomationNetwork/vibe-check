@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import SignOutButton from '@/components/shared/SignOutButton'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -27,7 +28,8 @@ export default function AppShell({ children, activeNav }: AppShellProps) {
         .then(({ data }) => {
           if (!data) return
           setIsAdmin(data.is_admin ?? false)
-          if (data.plan === 'starter') setPlanLabel('Starter')
+          if (data.is_admin) setPlanLabel('Admin — full access')
+          else if (data.plan === 'starter') setPlanLabel('Starter')
           else if (data.plan === 'monitor') setPlanLabel('Monitor')
         })
     })
@@ -82,11 +84,14 @@ export default function AppShell({ children, activeNav }: AppShellProps) {
           </a>
         </nav>
         <div className="plan-chip">
-          <div className="avatar">{initials}</div>
-          <div className="who">
-            <b>{displayName}</b>
-            <small>{planLabel}</small>
+          <div className="plan-chip-row">
+            <div className="avatar">{initials}</div>
+            <div className="who">
+              <b>{displayName}</b>
+              <small>{planLabel}</small>
+            </div>
           </div>
+          <SignOutButton className="sign-out-btn" />
         </div>
       </aside>
       {children}

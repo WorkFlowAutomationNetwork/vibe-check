@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/server'
 import AdminShell from '@/components/admin/AdminShell'
+import DeleteAccountForm from '@/components/admin/DeleteAccountForm'
 
 const PLAN_OPTIONS = ['free', 'starter', 'monitor'] as const
 
@@ -18,7 +19,7 @@ interface Profile {
 
 interface Scan {
   id: string
-  type: string
+  scan_type: string
   status: string
   grade: string | null
   started_at: string | null
@@ -54,7 +55,7 @@ export default async function AdminUserDetailPage({
       .limit(10),
     service
       .from('scans')
-      .select('id, type, status, grade, started_at, completed_at')
+      .select('id, scan_type, status, grade, started_at, completed_at')
       .eq('user_id', params.userId)
       .order('started_at', { ascending: false })
       .limit(10),
@@ -94,16 +95,7 @@ export default async function AdminUserDetailPage({
             </div>
           </div>
           <div className="admin-actions">
-            <form method="POST" action={`/api/admin/users/${params.userId}`}>
-              <input type="hidden" name="_method" value="DELETE" />
-              <button
-                type="submit"
-                className="btn-admin danger"
-                onClick={() => confirm('Delete this account permanently? This cannot be undone.')}
-              >
-                Delete account
-              </button>
-            </form>
+            <DeleteAccountForm userId={params.userId} />
           </div>
         </div>
 
@@ -271,7 +263,7 @@ export default async function AdminUserDetailPage({
                   {scans.map(s => (
                     <tr key={s.id}>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>
-                        {s.type}
+                        {s.scan_type}
                       </td>
                       <td>
                         <span className={`status-dot ${s.status}`}>{s.status}</span>

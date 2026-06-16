@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
+import SignOutButton from '@/components/shared/SignOutButton'
 
 type AdminNavItem = 'overview' | 'users' | 'subscriptions' | 'scans' | 'analytics' | 'revenue' | 'settings'
 
@@ -59,11 +60,14 @@ export default async function AdminShell({ children, activeNav }: AdminShellProp
         </nav>
 
         <div className="admin-user-chip">
-          <div className="admin-avatar">{initials}</div>
-          <div className="admin-who">
-            <b>{email.split('@')[0]}</b>
-            <small>Administrator</small>
+          <div className="admin-user-chip-row">
+            <div className="admin-avatar">{initials}</div>
+            <div className="admin-who">
+              <b>{email.split('@')[0]}</b>
+              <small>Administrator</small>
+            </div>
           </div>
+          <SignOutButton className="admin-sign-out-btn" />
         </div>
       </aside>
 
