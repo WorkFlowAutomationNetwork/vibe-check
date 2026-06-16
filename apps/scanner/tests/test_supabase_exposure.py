@@ -5,10 +5,20 @@ from scanners.supabase_exposure import SupabaseExposureScanner
 BASE_URL = "https://example.com"
 SUPABASE_URL = "https://abcdefghijklmno.supabase.co"
 ANON_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.abc123signature"
+SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.def456signature"
 
 PAGE_HTML = '<html><script src="/app.js"></script></html>'
 APP_JS = (
     f'window.__SUPABASE_URL__="{SUPABASE_URL}";'
+    f'window.__SUPABASE_ANON_KEY__="{ANON_KEY}";'
+)
+APP_JS_SERVICE_ROLE_ONLY = (
+    f'window.__SUPABASE_URL__="{SUPABASE_URL}";'
+    f'window.__SUPABASE_SERVICE_KEY__="{SERVICE_ROLE_KEY}";'
+)
+APP_JS_SERVICE_ROLE_AND_ANON = (
+    f'window.__SUPABASE_URL__="{SUPABASE_URL}";'
+    f'window.__SUPABASE_SERVICE_KEY__="{SERVICE_ROLE_KEY}";'
     f'window.__SUPABASE_ANON_KEY__="{ANON_KEY}";'
 )
 
@@ -67,3 +77,33 @@ def test_root_schema_request_fails_returns_no_findings():
         respx.get(f"{SUPABASE_URL}/rest/v1/").mock(side_effect=httpx.ConnectError("refused"))
         findings = SupabaseExposureScanner(BASE_URL).run()
     assert findings == []
+
+
+def test_service_role_jwt_alone_is_not_used_as_credentials():
+    with respx.mock:
+        respx.get(BASE_URL + "/").mock(return_value=httpx.Response(200, text=PAGE_HTML))
+        respx.get(f"{BASE_URL}/app.js").mock(
+            return_value=httpx.Response(200, text=APP_JS_SERVICE_ROLE_ONLY)
+        )
+        findings = SupabaseExposureScanner(BASE_URL).run()
+    assert findings == []
+
+
+def test_anon_jwt_is_used_even_when_service_role_jwt_also_present():
+    with respx.mock:
+        respx.get(BASE_URL + "/").mock(return_value=httpx.Response(200, text=PAGE_HTML))
+        respx.get(f"{BASE_URL}/app.js").mock(
+            return_value=httpx.Response(200, text=APP_JS_SERVICE_ROLE_AND_ANON)
+        )
+        respx.get(f"{SUPABASE_URL}/rest/v1/").mock(return_value=httpx.Response(200, json=OPENAPI_DOC))
+        respx.get(f"{SUPABASE_URL}/rest/v1/profiles").mock(return_value=httpx.Response(200, json=[]))
+        respx.get(f"{SUPABASE_URL}/rest/v1/scans").mock(return_value=httpx.Response(200, json=[]))
+
+        findings = SupabaseExposureScanner(BASE_URL).run()
+
+        discover_call = respx.calls[2]
+        assert discover_call.request.headers["apikey"] == ANON_KEY
+        assert discover_call.request.headers["authorization"] == f"Bearer {ANON_KEY}"
+
+    assert len(findings) == 1
+    assert findings[0].severity == "pass"

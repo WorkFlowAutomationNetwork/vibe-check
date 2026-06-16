@@ -1,3 +1,5 @@
+import base64
+import json
 import re
 
 import httpx
@@ -10,6 +12,33 @@ _JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
 _MAX_TABLES = 50
 
 
+def _decode_jwt_role(token: str) -> str | None:
+    """Decode the payload segment of a JWT and return its "role" claim, or None."""
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    payload_segment = parts[1]
+    padded = payload_segment + "=" * (-len(payload_segment) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(padded)
+        payload = json.loads(decoded)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    role = payload.get("role")
+    return role if isinstance(role, str) else None
+
+
+def _find_anon_jwt(blob: str) -> str | None:
+    """Return the first JWT-shaped match in blob whose decoded role is "anon"."""
+    for match in _JWT_RE.finditer(blob):
+        token = match.group(0)
+        if _decode_jwt_role(token) == "anon":
+            return token
+    return None
+
+
 def _extract_supabase_credentials(blobs: list[str]) -> tuple[str, str] | None:
     url: str | None = None
     key: str | None = None
@@ -19,9 +48,7 @@ def _extract_supabase_credentials(blobs: list[str]) -> tuple[str, str] | None:
             if match:
                 url = match.group(0)
         if key is None:
-            match = _JWT_RE.search(blob)
-            if match:
-                key = match.group(0)
+            key = _find_anon_jwt(blob)
         if url and key:
             return url, key
     return None
