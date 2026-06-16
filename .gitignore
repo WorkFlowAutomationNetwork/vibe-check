@@ -46,3 +46,6 @@ apps/web/next-env.d.ts
 # Claude Code worktrees and tool caches
 .claude/worktrees/
 apps/web/.firecrawl/
+
+# Internal security review notes
+Security-feedback.md

@@ -1,12 +1,24 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getLandingStats } from '@/lib/stats'
 import './landing.css'
 
 export const metadata: Metadata = {
   title: 'Vibe Check — Security audit for vibe-coded apps',
 }
 
-export default function LandingPage() {
+// Refresh the live stats at most once per hour (ISR).
+export const revalidate = 3600
+
+export default async function LandingPage() {
+  const stats = await getLandingStats()
+
+  // Hard-error fallback only: if the stats RPC is unreachable, show the original
+  // copy so SSR/layout never breaks. The normal path shows real numbers.
+  const scansRun = stats ? stats.scansRun.toLocaleString('en-US') : '2,431'
+  const sitesChecked = stats ? stats.sitesChecked.toLocaleString('en-US') : '2,431'
+  const avgVulns = stats ? stats.avgVulns.toFixed(1) : '6.2'
+
   return (
     <>
       {/* NAV */}
@@ -30,7 +42,7 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="hero">
         <div className="container">
-          <div className="hero-eyebrow"><span className="dot" /> Scanning live · 2,431 sites checked this week</div>
+          <div className="hero-eyebrow"><span className="dot" /> Scanning live · {sitesChecked} sites checked</div>
           <h1>Your app passed the <span className="strike">vibe check</span>.<br />But did it pass a <span className="accent">security check</span>?</h1>
           <p className="sub">Shipped something with Claude, Cursor, or v0 at 2am? We probe the things you probably forgot about. Free scan in 60 seconds, no account.</p>
 
@@ -56,8 +68,8 @@ export default function LandingPage() {
         <div className="container">
           <p className="trust-line">Built for the generation that <em>ships first</em> and asks questions later.</p>
           <div className="pills">
-            <div className="pill"><span className="pillIcon">↑</span><b>2,431</b> scans run this week</div>
-            <div className="pill"><span className="pillIcon">!</span> avg <b>6.2</b> vulnerabilities found</div>
+            <div className="pill"><span className="pillIcon">↑</span><b>{scansRun}</b> scans run</div>
+            <div className="pill"><span className="pillIcon">!</span> avg <b>{avgVulns}</b> vulnerabilities found</div>
             <div className="pill"><span className="pillIcon">~</span> takes <b>60s</b> end-to-end</div>
             <div className="pill"><span className="pillIcon">$</span> from <b>$0</b>, no card needed</div>
           </div>
