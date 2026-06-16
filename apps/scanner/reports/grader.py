@@ -2,7 +2,6 @@ from scanners.base import Finding
 
 _DEDUCTIONS: dict[str, int] = {
     "critical": 25,
-    "high": 15,
     "medium": 8,
     "low": 3,
     "info": 0,

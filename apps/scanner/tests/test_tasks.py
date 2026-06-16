@@ -54,7 +54,8 @@ def test_run_scan_inserts_findings_when_present(mock_sb, mock_consent_ok):
     from jobs.tasks import _execute_scan
 
     finding = Finding(
-        severity="high",
+        check_name="test-check",
+        severity="critical",
         category="Test",
         title="Test",
         description="d",
@@ -69,7 +70,7 @@ def test_run_scan_inserts_findings_when_present(mock_sb, mock_consent_ok):
     mock_sb.table.return_value.insert.assert_called_once()
     inserted = mock_sb.table.return_value.insert.call_args[0][0]
     assert len(inserted) == 1
-    assert inserted[0]["severity"] == "high"
+    assert inserted[0]["severity"] == "critical"
     assert inserted[0]["scan_id"] == "scan-1"
 
 
