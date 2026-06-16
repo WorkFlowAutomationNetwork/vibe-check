@@ -89,3 +89,41 @@ def test_run_scan_marks_failed_on_unexpected_error(mock_sb, mock_consent_ok):
 
     update_calls = str(mock_sb.table.return_value.update.call_args_list)
     assert "failed" in update_calls
+
+
+def test_passive_scan_does_not_run_supabase_exposure_scanner(mock_sb, mock_consent_ok):
+    with patch("jobs.tasks.HeadersScanner") as mh, \
+         patch("jobs.tasks.TLSScanner") as mt, \
+         patch("jobs.tasks.SupabaseExposureScanner") as ms:
+        mh.return_value.run.return_value = []
+        mt.return_value.run.return_value = []
+        from jobs.tasks import _execute_scan
+        _execute_scan(FakeSelf(), "scan-1", "url-1", "passive", "user-1")
+
+    ms.assert_not_called()
+
+
+def test_active_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
+    with patch("jobs.tasks.HeadersScanner") as mh, \
+         patch("jobs.tasks.TLSScanner") as mt, \
+         patch("jobs.tasks.SupabaseExposureScanner") as ms:
+        mh.return_value.run.return_value = []
+        mt.return_value.run.return_value = []
+        ms.return_value.run.return_value = []
+        from jobs.tasks import _execute_scan
+        _execute_scan(FakeSelf(), "scan-1", "url-1", "active", "user-1")
+
+    ms.assert_called_once_with("https://example.com")
+
+
+def test_deep_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
+    with patch("jobs.tasks.HeadersScanner") as mh, \
+         patch("jobs.tasks.TLSScanner") as mt, \
+         patch("jobs.tasks.SupabaseExposureScanner") as ms:
+        mh.return_value.run.return_value = []
+        mt.return_value.run.return_value = []
+        ms.return_value.run.return_value = []
+        from jobs.tasks import _execute_scan
+        _execute_scan(FakeSelf(), "scan-1", "url-1", "deep", "user-1")
+
+    ms.assert_called_once_with("https://example.com")

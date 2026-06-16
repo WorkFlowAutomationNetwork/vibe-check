@@ -6,6 +6,7 @@ from lib.supabase import get_supabase
 from reports.grader import grade
 from scanners.headers import HeadersScanner
 from scanners.tls import TLSScanner
+from scanners.supabase_exposure import SupabaseExposureScanner
 from jobs.config import celery_app
 
 
@@ -15,6 +16,18 @@ def _now() -> str:
 
 def _mark_scan(scan_id: str, **fields) -> None:
     get_supabase().table("scans").update(fields).eq("id", scan_id).execute()
+
+
+def _scanners_for_tier(scan_type: str) -> list:
+    """Cumulative tiers: active runs everything passive runs, plus more;
+    deep runs everything active runs, plus more (currently identical to
+    active — this is the seam for future intrusive scanners)."""
+    tiers = {
+        "passive": [HeadersScanner, TLSScanner],
+        "active": [HeadersScanner, TLSScanner, SupabaseExposureScanner],
+        "deep": [HeadersScanner, TLSScanner, SupabaseExposureScanner],
+    }
+    return tiers.get(scan_type, tiers["passive"])
 
 
 def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
@@ -29,8 +42,9 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
 
     try:
         findings = [
-            *HeadersScanner(url).run(),
-            *TLSScanner(url).run(),
+            f
+            for scanner_cls in _scanners_for_tier(scan_type)
+            for f in scanner_cls(url).run()
         ]
 
         if findings:
