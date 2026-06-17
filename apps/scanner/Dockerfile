@@ -1,7 +1,10 @@
 # --- Build stage: compile nuclei and pull its template library ---
 FROM golang:1.22-bookworm AS nuclei-build
 
-RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+# Pinned, not @latest: an unpinned version could silently change CLI flags
+# on a redeploy unrelated to this scanner, degrading NucleiScanner to a
+# silent "ran clean, zero findings" result instead of a loud build break.
+RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@v3.9.0
 
 # -update-templates pulls into ~/.config/nuclei/templates for the user
 # running the command (root, in this build stage).
