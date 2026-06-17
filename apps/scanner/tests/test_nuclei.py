@@ -123,3 +123,21 @@ def test_nonzero_exit_with_no_stdout_returns_empty_pass_set_not_crash():
     # failure from "exited 1 with nothing to report", so we don't raise either way.
     assert len(findings) == 1
     assert findings[0].severity == "pass"
+
+
+def test_invocation_uses_safe_tag_scope_and_rate_limit():
+    mock_run = MagicMock(return_value=_completed_process(""))
+    with patch("scanners.nuclei.subprocess.run", mock_run):
+        NucleiScanner(URL).run()
+
+    args, kwargs = mock_run.call_args
+    command = args[0]
+    assert command[0] == "nuclei"
+    assert "-u" in command and URL in command
+    assert "-tags" in command
+    assert command[command.index("-tags") + 1] == "cve,exposure,misconfig,default-login,tech"
+    assert "-etags" in command
+    assert command[command.index("-etags") + 1] == "dos,fuzz,intrusive"
+    assert "-rate-limit" in command
+    assert command[command.index("-rate-limit") + 1] == "50"
+    assert kwargs["timeout"] == 120
