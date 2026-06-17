@@ -4,6 +4,8 @@
 
 *Last updated: 2026-06-16 — scan-tier branching + Supabase exposure scanner merged · admin profile RLS hole closed · admin user-detail 500 fixed (illegal RSC event handler) · `scans.type`→`scan_type` bug fixed · sign-out added app-wide · product roadmap re-prioritized after report/scanner critique (Sprint 1: reporting reframe + stack detection; Sprint 2: secrets + storage scanners; IDOR/multi-tenant/prompt-injection deprioritized)*
 
+*2026-06-17 — security review remediation (branch `security-fixes-rls-redirect`): **A1** findings column-leak to anon closed via `public_findings` view + dropped broad anon policy (migration 18, APPLIED to remote); **A2** table-wide anon `badges` policy dropped (migration 18, APPLIED); **A3** auth-callback `next` open-redirect validated to same-origin; **A4** Stripe webhook now links via `client_reference_id` not the non-existent `profiles.email` column (was a dead no-op); **A5** Finding security invariant documented + regression test that row contents never leak into findings; **C5** admin password-reset now actually sends (was `generateLink` no-op → `resetPasswordForEmail`); **B3** `/trust` page shipped with scanner egress IPs; **legal layer** `/terms` + `/privacy` drafted (LAWYER-REVIEW placeholders) + sign-up Terms/Privacy acceptance gate + onboard "I am authorised" acknowledgement (D7). GitGuardian "service-role JWT" alert = FALSE POSITIVE on a test fixture (no real key leaked); fixture rebuilt at runtime so it stops flagging. Migrations 18 + 19 both APPLIED to remote. **Still open (operational, not code):** C3 retention purge job + account-deletion cascade verification; C2 sub-processor DPAs; lawyer review of `/terms` + `/privacy` before paid launch. See `Security-feedback.md` for the per-item status.*
+
 ---
 
 ## ⚠️ Known Issues — Check These First
@@ -83,7 +85,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Service | Status | Notes |
 |---|---|---|
 | Next.js (apps/web) | ✅ Running | Next.js 14, App Router, TypeScript strict. Build passing. |
-| Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 14 migrations applied. |
+| Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 19 migrations applied. |
 | Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 40 tests. |
 | Redis (Fly.io) | ✅ Deployed | Fly.io managed Redis (Upstash). Connected to scanner. `vibe-check-redis` instance. |
 | Stripe | ⚠️ Client configured | `lib/stripe/client.ts` exists. No products created in Stripe dashboard yet. |
@@ -96,7 +98,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 ### Remote project
 - **Project ID:** `lvkiflbpbtmlrgdftivt`
 - **Region:** (Supabase default)
-- **All 14 migrations applied** to the remote project
+- **All 19 migrations applied** to the remote project
 
 ### Migrations applied
 
@@ -119,6 +121,8 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `20260521000015_indexes_storage_stripe_status.sql` | `stripe_subscription_status` on profiles, 9 missing FK indexes, `reports` Storage bucket + RLS, `badge_status` view | ✅ Applied |
 | `20260616000016_admin_account.sql` | Auto-sets `is_admin=true` for `patrickcampbell@workflowautomationnetwork.com` on signup (BEFORE INSERT trigger on profiles). Also runs UPDATE in case account already exists. | ✅ Applied |
 | `20260616000017_protect_profile_sensitive_fields.sql` | `BEFORE UPDATE` trigger on `profiles` blocking client-side changes to `is_admin`, `plan`, `stripe_customer_id`, `stripe_subscription_id`, `stripe_subscription_status` unless `auth.role() = 'service_role'`. Closes a privilege-escalation hole where any signed-in user could PATCH their own profile via the Supabase client and grant themselves admin/paid-plan status. | ✅ Applied |
+| `20260617000018_public_findings_view_and_badge_policy.sql` | Security review A1+A2: creates `public_findings` view (only `id,scan_id,severity,title,category,result`), drops broad `anon can view public scan findings` policy on `findings`, grants SELECT-only on the view to anon/authenticated, drops table-wide `anon can view active badges` policy. | ✅ Applied |
+| `20260617000019_terms_acceptance.sql` | D7: adds `terms_accepted_at` + `terms_version` to `profiles`; extends `handle_new_user()` to copy them from auth metadata on signup. | ✅ Applied |
 
 ### Key schema facts
 - `profiles.plan` = `'free' | 'starter' | 'monitor'`
@@ -140,8 +144,11 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 
 | Page | Route | Status | Notes |
 |---|---|---|---|
-| Landing | `/` | ✅ Built | Converted from `design/Vibe-Check Landing.html`. Uses `landing.css`. |
+| Landing | `/` | ✅ Built | Converted from `design/Vibe-Check Landing.html`. Uses `landing.css`. Footer links wired to /trust, /terms, /privacy, /pricing. |
 | Pricing | `/pricing` | ✅ Built | Full marketing page — 3 tiers, FAQ, footer CTA. Uses `landing.css`. |
+| Trust | `/trust` | ✅ Built | Scanner egress IPs (keep in sync with /admin/settings) + scanning safeguards. B3. |
+| Terms | `/terms` | ✅ Draft | All D1–D6 clauses. **Lawyer review + `[BRACKETED]` placeholders pending.** Uses `LegalShell`. |
+| Privacy | `/privacy` | ✅ Draft | C1 privacy policy + C3 retention + C4 PCI. **Lawyer review pending.** Uses `LegalShell`. |
 
 ### (auth) routes — unauthenticated
 
@@ -373,7 +380,7 @@ apps/scanner/
   tests/                             ← 40 tests, all passing
 
 supabase/
-  migrations/                        ← All 14 migrations (applied)
+  migrations/                        ← All 19 migrations (applied)
   seed.sql                           ← Dev seed data
   tests/verify_schema.sql            ← Schema validation queries
 

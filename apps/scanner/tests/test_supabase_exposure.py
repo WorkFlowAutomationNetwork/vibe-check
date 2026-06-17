@@ -1,11 +1,27 @@
+import base64
+import json
+
 import httpx
 import respx
 from scanners.supabase_exposure import SupabaseExposureScanner
 
+
+def _fake_jwt(role: str) -> str:
+    """Build a structurally valid (but unsigned, non-credential) JWT for the
+    given role claim. Constructed at runtime rather than hard-coded so secret
+    scanners (e.g. GitGuardian) don't flag the fixtures as real keys — there is
+    no signed token here, just header.payload.<placeholder>."""
+    def seg(obj: dict) -> str:
+        raw = json.dumps(obj, separators=(",", ":")).encode()
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    return f"{seg({'alg': 'HS256'})}.{seg({'role': role})}.not-a-real-signature"
+
+
 BASE_URL = "https://example.com"
 SUPABASE_URL = "https://abcdefghijklmno.supabase.co"
-ANON_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.abc123signature"
-SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.def456signature"
+ANON_KEY = _fake_jwt("anon")
+SERVICE_ROLE_KEY = _fake_jwt("service_role")
 
 PAGE_HTML = '<html><script src="/app.js"></script></html>'
 APP_JS = (

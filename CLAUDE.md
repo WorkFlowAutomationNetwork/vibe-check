@@ -1,6 +1,6 @@
 # CLAUDE.md — Vibe-Check
 
-> Read this file at the start of every session. It defines the full project context, architecture, conventions, and setup.
+> Read this file at the start of every session. It defines the full project context, architecture, conventions, and setup. Update it as required as the platform grows and changes to ensure it stays up to date, accurate and relevant
 
 ---
 

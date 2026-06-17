@@ -323,11 +323,10 @@ export default async function LandingPage() {
         <div className="container row">
           <div>© 2026 Vibe-Check · independently funded · made in a kitchen</div>
           <div className="links">
-            <a href="#">Status</a>
-            <a href="#">Trust</a>
-            <a href="#">Methodology</a>
-            <a href="#">Twitter</a>
-            <a href="#">Email</a>
+            <Link href="/trust">Trust</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/pricing">Pricing</Link>
           </div>
         </div>
       </footer>
