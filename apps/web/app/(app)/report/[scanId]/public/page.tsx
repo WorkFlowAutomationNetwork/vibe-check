@@ -46,7 +46,7 @@ export default async function PublicReportPage({ params }: { params: { scanId: s
 
   const [{ data: urlRow }, { data: findings }] = await Promise.all([
     supabase.from('urls').select('url').eq('id', scan.url_id).single(),
-    supabase.from('findings')
+    supabase.from('public_findings')
       .select('id, severity, title, category, result')
       .eq('scan_id', params.scanId),
   ])

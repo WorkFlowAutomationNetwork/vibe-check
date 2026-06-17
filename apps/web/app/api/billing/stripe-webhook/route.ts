@@ -47,11 +47,18 @@ export async function POST(request: Request) {
 
     case 'checkout.session.completed': {
       const session = event.data.object
-      if (session.customer && session.customer_email) {
+      // Link the Stripe customer to our internal user via client_reference_id,
+      // which the Checkout Session must be created with (client_reference_id =
+      // user.id). The previous code matched on `profiles.email` — a column that
+      // does not exist on `profiles`, so the link silently never happened
+      // (security review A4). Matching on the authoritative user id is robust
+      // and not dependent on a mutable email.
+      const userId = session.client_reference_id ?? session.metadata?.user_id
+      if (session.customer && userId) {
         await supabase
           .from('profiles')
           .update({ stripe_customer_id: session.customer as string })
-          .eq('email', session.customer_email)
+          .eq('id', userId)
       }
       break
     }

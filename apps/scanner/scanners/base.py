@@ -16,6 +16,19 @@ def _severity_to_result(severity: str) -> Result:
 
 @dataclass
 class Finding:
+    """A single scan result.
+
+    SECURITY INVARIANT (security review A5 / B1 / B2):
+    A finding's text fields and any future `metadata` must NEVER contain raw
+    response bodies, row contents, payloads, or any PII read from the target's
+    systems. Store likelihood assessments and aggregates only — counts, table
+    names, header names, status codes — not the data itself. For a public
+    (shareable) scan every field here is world-readable, and the data this
+    scanner reads belongs to the customer's end users, not us.
+
+    Good:  "table 'profiles' returned 1 row" (a count).
+    Bad:   storing that row, or "user_email=alice@example.com was returned".
+    """
     check_name: str
     severity: Severity
     category: str

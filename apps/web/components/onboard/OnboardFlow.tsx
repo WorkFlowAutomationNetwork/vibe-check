@@ -42,6 +42,7 @@ export default function OnboardFlow() {
   const [state, setState] = useState<State>(INITIAL_STATE)
   const { allowedScanTypes, isAdmin } = useScanEligibility()
   const [urlInput, setUrlInput] = useState('')
+  const [authorized, setAuthorized] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -60,6 +61,10 @@ export default function OnboardFlow() {
   async function handleUrlSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!urlInput.trim()) return
+    if (!authorized) {
+      set({ error: 'Please confirm you own or are authorised to test this URL before continuing.' })
+      return
+    }
     setSubmitting(true)
     set({ error: null })
 
@@ -239,10 +244,37 @@ export default function OnboardFlow() {
               onChange={e => setUrlInput(e.target.value)}
               disabled={submitting}
             />
-            <button type="submit" disabled={submitting || !urlInput.trim()}>
+            <button type="submit" disabled={submitting || !urlInput.trim() || !authorized}>
               {submitting ? 'Adding…' : 'Continue →'}
             </button>
           </form>
+
+          <label
+            style={{
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+              fontSize: 13,
+              color: 'var(--ink-soft)',
+              lineHeight: 1.5,
+              margin: '4px 0 16px',
+              cursor: 'pointer',
+              maxWidth: 560,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={authorized}
+              onChange={e => setAuthorized(e.target.checked)}
+              style={{ marginTop: 2, flexShrink: 0 }}
+              aria-label="Confirm authorisation to scan this URL"
+            />
+            <span>
+              I confirm I <b>own</b> this URL, or I am <b>expressly authorised by the owner</b> to
+              test it. Scanning systems you are not authorised to test may be illegal — see our{' '}
+              <Link href="/terms" target="_blank" style={{ color: 'var(--violet)' }}>Terms</Link>.
+            </span>
+          </label>
 
           <div className="onb-helper">We&apos;ll verify you own this before scanning. <b>Read-only</b> — we never write to your app or store credentials.</div>
 

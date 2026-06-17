@@ -29,14 +29,23 @@ export async function POST(
   // Get user email
   const { data: authUser, error } = await service.auth.admin.getUserById(params.userId)
   if (error || !authUser?.user?.email) {
-    return NextResponse.redirect(new URL(`/admin/users/${params.userId}`, request.url))
+    return NextResponse.redirect(
+      new URL(`/admin/users/${params.userId}?reset=error`, request.url),
+    )
   }
 
-  // Send password reset email via Supabase (generates a link)
-  await service.auth.admin.generateLink({
-    type: 'recovery',
-    email: authUser.user.email,
-  })
+  // Actually SEND the recovery email. `generateLink` only *generates* a link
+  // and never delivers it — using it here meant admin "Send reset" was a no-op
+  // (security review C5). `resetPasswordForEmail` triggers Supabase's SMTP to
+  // deliver the email, matching the working self-service flow on /reset-password.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
+  const { error: sendError } = await service.auth.resetPasswordForEmail(
+    authUser.user.email,
+    { redirectTo: `${appUrl}/api/auth/callback?next=/settings` },
+  )
 
-  return NextResponse.redirect(new URL(`/admin/users/${params.userId}`, request.url))
+  const status = sendError ? 'error' : 'sent'
+  return NextResponse.redirect(
+    new URL(`/admin/users/${params.userId}?reset=${status}`, request.url),
+  )
 }

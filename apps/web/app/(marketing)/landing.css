@@ -496,3 +496,25 @@ footer .row .links { display: flex; gap: 18px; }
 }
 @media (min-width: 1100px) { .hero-side-tag { display: block; } }
 .hero-side-tag .arrow { display: inline-block; margin-right: 4px; }
+
+/* Legal pages (/terms, /privacy) */
+.legal-body { font-size: 15px; color: var(--ink-soft); line-height: 1.7; }
+.legal-body h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 32px 0 10px;
+}
+.legal-body p { margin: 0 0 14px; }
+.legal-body ul { margin: 0 0 14px; padding-left: 22px; }
+.legal-body li { margin-bottom: 8px; }
+.legal-body strong { color: var(--ink); }
+.legal-body .clause-quote {
+  border-left: 3px solid var(--violet);
+  background: var(--violet-soft);
+  padding: 14px 18px;
+  margin: 0 0 16px;
+  border-radius: var(--radius-sm);
+  font-style: italic;
+}
