@@ -395,6 +395,12 @@ cd apps/web && npm run dev          # Next.js on :3000
 cd apps/scanner && uvicorn api.main:app --reload --port 8000
 cd apps/scanner && celery -A queue.worker worker --loglevel=info
 
+# Forward Stripe test-mode webhooks to local dev (separate terminal, run alongside `npm run dev`)
+# Stripe CLI installed via: winget install --id Stripe.StripeCli -e
+stripe listen --forward-to localhost:3000/api/billing/stripe-webhook --api-key <STRIPE_SECRET_KEY from apps/web/.env.local>
+# Prints/uses a stable whsec_... per Stripe account+device — already set as
+# STRIPE_WEBHOOK_SECRET in apps/web/.env.local, no need to re-copy it each time.
+
 # Run Supabase locally
 npx supabase start                  # Requires Supabase CLI
 npx supabase db reset               # Apply migrations + seed

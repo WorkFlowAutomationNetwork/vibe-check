@@ -77,10 +77,10 @@ export default async function BillingPage() {
             </div>
             <div className="pactions">
               {plan === 'free' && (
-                <Link href="/api/billing/portal" className="btn btn-lime">↑ Upgrade to Starter</Link>
+                <Link href="/api/billing/checkout?plan=starter" className="btn btn-lime">↑ Upgrade to Starter</Link>
               )}
               {plan === 'starter' && (
-                <Link href="/api/billing/portal" className="btn btn-lime">↑ Upgrade to Monitor</Link>
+                <Link href="/api/billing/checkout?plan=monitor" className="btn btn-lime">↑ Upgrade to Monitor</Link>
               )}
               {plan === 'monitor' && (
                 <Link href="/api/billing/portal" className="btn btn-outline">Manage subscription</Link>
@@ -227,14 +227,14 @@ export default async function BillingPage() {
             <div>
               {plan === 'starter'
                 ? <button className="current-btn">current plan</button>
-                : <Link href="/api/billing/portal" className="upgrade-btn">
+                : <Link href="/api/billing/checkout?plan=starter" className="upgrade-btn">
                     {plan === 'free' ? 'Upgrade to Starter →' : 'Switch to Starter'}
                   </Link>}
             </div>
             <div>
               {plan === 'monitor'
                 ? <button className="current-btn">current plan</button>
-                : <Link href="/api/billing/portal" className="upgrade-btn">Upgrade to Monitor →</Link>}
+                : <Link href="/api/billing/checkout?plan=monitor" className="upgrade-btn">Upgrade to Monitor →</Link>}
             </div>
           </div>
         </div>

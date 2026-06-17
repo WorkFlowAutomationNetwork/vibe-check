@@ -55,10 +55,20 @@ export async function POST(request: Request) {
       // and not dependent on a mutable email.
       const userId = session.client_reference_id ?? session.metadata?.user_id
       if (session.customer && userId) {
-        await supabase
-          .from('profiles')
-          .update({ stripe_customer_id: session.customer as string })
-          .eq('id', userId)
+        const update: { stripe_customer_id: string; plan?: 'starter' | 'monitor' } = {
+          stripe_customer_id: session.customer as string,
+        }
+        // One-time purchases (mode: 'payment', e.g. Starter) have no
+        // subscription object, so customer.subscription.created never fires —
+        // the plan has to be set here, from the metadata the checkout route
+        // attached, instead of via resolvePlan()'s subscription price lookup.
+        if (session.mode === 'payment') {
+          const metadataPlan = session.metadata?.plan
+          if (metadataPlan === 'starter' || metadataPlan === 'monitor') {
+            update.plan = metadataPlan
+          }
+        }
+        await supabase.from('profiles').update(update).eq('id', userId)
       }
       break
     }
