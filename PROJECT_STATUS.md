@@ -14,6 +14,8 @@
 
 *2026-06-17 (latest) — **PDF report generation built.** `reports/templates/report.html` (Jinja2) + `reports/renderer.py::render_report_html/render_report_pdf` (WeasyPrint) render a branded PDF (grade card, issues sorted by severity, passing checks) from scan+findings data. `lib/storage.py::upload_report_pdf` uploads it to the existing private `reports` Storage bucket at `{user_id}/{scan_id}.pdf` (RLS already scopes each user to their own folder — migration 015). Wired into `jobs/tasks.py::_execute_scan`: runs after grading, on every completed scan regardless of tier; failure is non-fatal (`pdf_storage_path` just stays `null`) since the security findings are already persisted. Web: `/report/[scanId]` now passes `scan.pdf_storage_path` to `ReportActionsBar`, whose "Download PDF" button calls `supabase.storage.from('reports').createSignedUrl()` from the browser (no new API route needed — existing RLS policy already restricts the signed-URL grant to the owning user) and opens it in a new tab; button is disabled with a tooltip when no PDF exists yet. Dockerfile installs the native Pango/Cairo/GObject libs WeasyPrint needs (absent on a bare Windows dev box — confirmed locally, `weasyprint.HTML(...).write_pdf()` fails without them; `renderer.py` imports it defensively so the module still loads and is testable via mocking `reports.renderer.weasyprint`). Scanner suite 97→**105/105 green** (+8: renderer HTML/PDF, storage upload, two tasks-wiring tests). Also fixed a latent bug from the storage-exposure scanner: it used `category="storage"`, which isn't in the `findings.category` DB check constraint (`headers/transport/ai/auth/cors/deps/endpoints/secrets`) — would have failed every insert in production. Changed to `"endpoints"`, consistent with the table-exposure scanner. ⚠️ **Scanner redeploy to Fly.io required** — stacks on the still-pending redeploys for the header check, secrets scanner, and items 7/8.*
 
+*2026-06-17 (latest) — **Nuclei deep-tier scanner built.** `scanners/nuclei.py::NucleiScanner` wraps the `nuclei` CLI as a subprocess, scoped to a curated safe-tag template subset (`cve`, `exposure`, `misconfig`, `default-login`, `tech` — excludes `dos`/`fuzz`/`intrusive`). Severity mapping: nuclei `critical`→`critical`, `high`→`critical`, `medium`→`medium`, `low`/`info`→`low`; category is always `endpoints`. Wired into the **`deep` tier only** in `jobs/tasks.py::_scanners_for_tier` — the first scanner where `deep` differs from `active`. Built via brainstorm→spec→plan→subagent-driven TDD: 14 new tests in `tests/test_nuclei.py`, all mocking `subprocess.run` (no local nuclei binary required). Spec: `docs/superpowers/specs/2026-06-17-nuclei-deep-tier-scanner-design.md`; plan: `docs/superpowers/plans/2026-06-17-nuclei-deep-tier-scanner.md`. During implementation a reviewer flagged the Dockerfile's `go install nuclei@latest` as an unpinned-version reproducibility risk — a future image rebuild could silently pull a different nuclei version with different CLI flags, which `NucleiScanner` would degrade to a silent "zero findings" result rather than a loud failure. Fixed in a follow-up commit pinning to `v3.9.0`. Scanner suite 116→**133/133 green**. SQLmap/DalFox remain explicitly out of scope — separate future specs. ⚠️ **Scanner redeploy to Fly.io required** (multi-stage Dockerfile change must ship, stacks on top of prior pending redeploys).*
+
 *2026-06-17 (even later) — **Sprint 2 items 7 + 8 done.** **Item 7:** `SupabaseExposureScanner._discover_tables` now falls back to a ~30-name common-table guess list (`users`, `profiles`, `orders`, etc.) when the OpenAPI root spec discloses no `paths` (introspection disabled or stripped by a proxy) — same RLS-exposure check still runs, just without discovery. The "tables found, none exposed" pass message now counts only tables that actually returned 200 (not raw guesses), so an all-404 guess run no longer falsely claims tables were "found". **Item 8:** new `scanners/storage_exposure.py::StorageExposureScanner` — lists Supabase Storage buckets via the same page-derived anon key (`GET /storage/v1/bucket`), then for every bucket **not** marked `public`, attempts `POST /storage/v1/object/list/{bucket}`; a non-empty result means storage.objects RLS is missing/too permissive → `critical` (file names never stored, only counts, per the A5 invariant). Empty listings are treated as ambiguous (Supabase storage RLS silently filters rather than denying) and not flagged. Buckets explicitly marked public are skipped entirely (expected). Shared anon-key/URL extraction logic moved out of `supabase_exposure.py` into `lib/supabase_creds.py` so both scanners use it. Wired into `jobs/tasks.py::_scanners_for_tier` on `active`/`deep`. Scanner suite 84→**97/97 green** (+13 tests: 2 for item 7 fallback, 8 for the new storage scanner, 3 for tier-inclusion). ⚠️ **Scanner redeploy to Fly.io required** (stacks on top of the still-pending header-check + secrets-scanner redeploy).*
 
 ---
@@ -260,13 +262,13 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `StorageExposureScanner` | ✅ | Detects Supabase Storage buckets (not marked public) whose contents are listable via the site's own public anon key — missing/too-permissive RLS on `storage.objects`. File names never stored (counts only, A5). `active`/`deep` tiers. Shares `lib/supabase_creds.py` with the table-exposure scanner. |
 | `SecretsScanner` | ✅ | Scans page + same-origin JS bundles for leaked credentials (Stripe sk_/rk_, OpenAI, Anthropic, AWS AKIA, GitHub, Slack, SendGrid, npm, private keys, Supabase service-role JWT) → `critical` each (incl. test-mode keys). Publishable keys (Stripe pk_, Supabase anon, Google/Firebase AIza) → `pass` "expected" note. Masks to last-4 only (full secret never stored, A5). Dedupes by content fingerprint. `active`/`deep` tiers. Shares `lib/jwt.py` with the exposure scanner. |
 | `RateLimitScanner` | ✅ | Sends 8 bogus-credential POSTs to a discovered login endpoint (form-derived or common-path fallback); flags `medium` if none are throttled (no 429/Retry-After). Login-only by design (signup probing would itself create spam accounts). `active`/`deep` tiers. |
-| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase table exposure + Storage bucket exposure + secrets + rate-limit probe. `deep` has no additional scanners yet. |
+| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active` = passive + Supabase table exposure + Storage bucket exposure + secrets + rate-limit probe, `deep` = `active` + `NucleiScanner` (first tier where `deep` differs from `active`). |
 | `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
 | fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
-| Tests | ✅ | 116/116 passing |
-| Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
+| Tests | ✅ | 133/133 passing |
+| `NucleiScanner` | ✅ | Curated safe-tag template subset (cve/exposure/misconfig/default-login/tech, excludes dos/fuzz/intrusive). `deep` tier only. SQLmap/DalFox still not started — separate future specs. |
 | PDF generation | ✅ | `reports/renderer.py` (Jinja2 + WeasyPrint) + `lib/storage.py` upload to `reports` bucket. Runs on every completed scan in `jobs/tasks.py`. Web "Download PDF" button wired via signed URL. ⚠️ needs Fly.io redeploy (Dockerfile updated with native Pango/Cairo libs). |
 
 **Deployed at:** `https://vibe-check-scanner.fly.dev` — health check `{"status":"ok","version":"0.1.0"}` confirmed live.
@@ -317,7 +319,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | No exposed-secrets scanner | ✅ Resolved 2026-06-17 | `scanners/secrets.py` (`SecretsScanner`) scans JS bundles for leaked credentials, runs on active/deep. Sprint 2 item 6. ⚠️ scanner redeploy required for prod. |
 | Supabase/PostgREST exposed-data check | ✅ Built + extended 2026-06-17 | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. Sprint 2 item 7: now falls back to common-table-name guessing when OpenAPI introspection is disabled. |
 | No Storage bucket exposure check | ✅ Resolved 2026-06-17 | `scanners/storage_exposure.py` (`StorageExposureScanner`) — Sprint 2 item 8. Checks non-public buckets for anon-key-listable contents (missing storage.objects RLS). ⚠️ scanner redeploy required for prod. |
-| No SQLi/XSS checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. |
+| No SQLi/XSS checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist — separate future specs. |
 | No rate-limit probe | ✅ Resolved 2026-06-17 | `scanners/rate_limit.py` (`RateLimitScanner`) — Sprint 3 item 9. Login-endpoint only. ⚠️ scanner redeploy required for prod. |
 
 ---
@@ -344,6 +346,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 
 ### Sprint 3 — Operational depth
 9. ✅ **Rate-limit probe** — `scanners/rate_limit.py`. 8 requests against a discovered login endpoint only (not signup/contact — see note above), flags `medium` if no throttling observed. `active`/`deep` tiers.
+9b. ✅ **Nuclei deep-tier scanner** — `scanners/nuclei.py::NucleiScanner`, curated safe-tag template subset, `deep` tier only. Spec: `docs/superpowers/specs/2026-06-17-nuclei-deep-tier-scanner-design.md`; plan: `docs/superpowers/plans/2026-06-17-nuclei-deep-tier-scanner.md`. SQLmap/DalFox (Sprint 3's "Nuclei / SQLi / XSS" line) remain **not started** — separate future specs, out of scope for this work.
 10. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans.
 11. **CVE monitoring** — ties into Monitor tier's "continuous protection" pitch.
 
@@ -355,7 +358,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 - **Stripe products** — Create Free/Starter/Monitor products in Stripe dashboard. Add price IDs to env. Build `/api/billing/checkout` session creation route. Wire upgrade buttons.
 - **NEXT_PUBLIC_APP_URL env var** — Add to `.env.example` and set in Vercel env. Required for badge embed codes and Stripe portal return URL.
 - ~~**PDF generation**~~ ✅ **DONE** — `reports/renderer.py` + `lib/storage.py`, wired into `jobs/tasks.py` and the report page's Download PDF button. Needs Fly.io redeploy.
-- **Active scanning (Nuclei)** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
+- ~~**Active scanning (Nuclei)**~~ ✅ **DONE** — `scanners/nuclei.py::NucleiScanner`, `deep` tier only. See Sprint 3 item 9b.
 - **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
 - ~~**End-to-end scan test**~~ ✅ **DONE** — chorusproject.io scanned successfully. 4 medium, 2 low, 1 pass. Findings written to DB and rendered in report UI.
 
@@ -391,6 +394,7 @@ apps/scanner/
   scanners/storage_exposure.py       ← Supabase Storage bucket RLS exposure check
   scanners/secrets.py                ← Leaked credential scanner (JS bundles)
   scanners/rate_limit.py             ← Login-endpoint rate-limit probe (8 bogus-credential POSTs)
+  scanners/nuclei.py                 ← Curated-safe-tag Nuclei subprocess wrapper (deep tier only)
   lib/supabase_creds.py              ← Shared Supabase URL/anon-key extraction (used by both exposure scanners)
   lib/jwt.py                         ← Shared JWT decode (role claim only, no signature verification)
   lib/consent.py                     ← consent.verify() — MUST run before any scan
