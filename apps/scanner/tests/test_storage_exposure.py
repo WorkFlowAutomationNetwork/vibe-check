@@ -33,27 +33,33 @@ def _mock_page_and_script():
     respx.get(f"{BASE_URL}/app.js").mock(return_value=httpx.Response(200, text=APP_JS))
 
 
-def test_no_credentials_found_returns_no_findings():
+def test_no_credentials_found_returns_info_finding():
     with respx.mock:
         respx.get(BASE_URL).mock(return_value=httpx.Response(200, text="<html>no keys here</html>"))
         findings = StorageExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-storage-exposure"
 
 
-def test_bucket_list_request_fails_returns_no_findings():
+def test_bucket_list_request_fails_returns_info_finding():
     with respx.mock:
         _mock_page_and_script()
         respx.get(f"{SUPABASE_URL}/storage/v1/bucket").mock(side_effect=httpx.ConnectError("refused"))
         findings = StorageExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-storage-exposure"
 
 
-def test_no_buckets_returns_no_findings():
+def test_no_buckets_returns_info_finding():
     with respx.mock:
         _mock_page_and_script()
         respx.get(f"{SUPABASE_URL}/storage/v1/bucket").mock(return_value=httpx.Response(200, json=[]))
         findings = StorageExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-storage-exposure"
 
 
 def test_public_bucket_is_not_flagged():
@@ -63,7 +69,10 @@ def test_public_bucket_is_not_flagged():
             return_value=httpx.Response(200, json=[{"name": "avatars", "public": True}])
         )
         findings = StorageExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert "avatars" not in findings[0].description  # no bucket names leaked into the not-applicable note
+    assert findings[0].check_name == "supabase-storage-exposure"
 
 
 def test_private_bucket_listable_returns_critical_without_filenames():

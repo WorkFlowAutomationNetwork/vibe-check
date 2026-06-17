@@ -15,12 +15,12 @@ class StorageExposureScanner(BaseScanner):
         blobs = fetch_page_and_scripts(self.url, self.timeout)
         creds = extract_supabase_credentials(blobs)
         if not creds:
-            return []
+            return [self._no_backend_finding()]
 
         supabase_url, anon_key = creds
         buckets = self._list_buckets(supabase_url, anon_key)
         if not buckets:
-            return []
+            return [self._no_buckets_finding()]
 
         return self._probe_private_buckets(supabase_url, anon_key, buckets)
 
@@ -113,4 +113,49 @@ class StorageExposureScanner(BaseScanner):
                 remediation="",
             )]
 
-        return []
+        return [self._all_buckets_public_finding(len(buckets))]
+
+    def _no_backend_finding(self) -> Finding:
+        return Finding(
+            check_name="supabase-storage-exposure",
+            severity="info",
+            category="endpoints",
+            title="No Supabase backend detected",
+            description=(
+                "This check looks for a Supabase project URL and anon key in the "
+                "site's client-side code. We didn't find one, so this app doesn't "
+                "appear to use Supabase Storage — this check only applies to apps "
+                "that do."
+            ),
+            what_we_did="Scanned the page and its JavaScript bundles for a Supabase project URL and anon key.",
+            remediation="",
+        )
+
+    def _no_buckets_finding(self) -> Finding:
+        return Finding(
+            check_name="supabase-storage-exposure",
+            severity="info",
+            category="endpoints",
+            title="Found a Supabase backend, but no storage buckets were listable",
+            description=(
+                "Found a Supabase project URL and anon key, but listing storage "
+                "buckets with that key didn't return any — so we couldn't confirm "
+                "any buckets exist to check for missing RLS."
+            ),
+            what_we_did="Listed storage buckets via the Supabase Storage API using the site's public anon key.",
+            remediation="",
+        )
+
+    def _all_buckets_public_finding(self, bucket_count: int) -> Finding:
+        return Finding(
+            check_name="supabase-storage-exposure",
+            severity="info",
+            category="endpoints",
+            title="All storage buckets found are public",
+            description=(
+                f"Found {bucket_count} storage bucket(s), all marked public — "
+                "there were no private buckets left to check for missing RLS."
+            ),
+            what_we_did="Listed storage buckets via the Supabase Storage API and checked which are marked public.",
+            remediation="",
+        )
