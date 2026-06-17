@@ -36,6 +36,11 @@ class Finding:
     description: str
     what_we_did: str
     remediation: str
+    # Optional structured aggregates (e.g. detected tech-stack names). Subject to
+    # the invariant above — counts/identifiers/labels only, never response bodies
+    # or PII. Persisted to the findings.metadata jsonb column; NOT exposed via the
+    # public_findings view.
+    metadata: dict | None = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
