@@ -23,6 +23,6 @@ primary_region = "syd"
   worker = "celery -A jobs.worker worker --loglevel=info --concurrency=2"
 
 [[vm]]
-  memory = "512mb"
+  memory = "2048mb"
   cpu_kind = "shared"
-  cpus = 1
+  cpus = 2
