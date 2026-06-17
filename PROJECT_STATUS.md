@@ -2,6 +2,15 @@
 
 > **Living document.** Update this file whenever a major feature is added, a page is built, a migration is applied, or an integration is wired up. Claude reads this at the start of every session to understand current state.
 
+*2026-06-17 (deploy) — **Scanner redeployed to Fly.io.** All pending Sprint 1-3 work (tech-disclosure check, secrets scanner, Supabase/Storage exposure, rate-limit probe, PDF generation, Nuclei deep-tier scanner) is now live at `vibe-check-scanner.fly.dev`. The deploy surfaced and fixed four real bugs the local test suite couldn't catch (no Docker/nuclei binary available in the dev environment):
+1. **Go toolchain too old** — `golang:1.22-bookworm` couldn't build nuclei v3.9.0 (`requires go >= 1.25.7`). Bumped to `golang:1.25-bookworm`.
+2. **Wrong nuclei binary path** — `go install` didn't place the binary at the assumed `/root/go/bin/nuclei` on this builder. Fixed by setting `GOBIN` explicitly so the install location is no longer ambiguous.
+3. **Wrong template directory copied** — the Dockerfile copied `/root/.config/nuclei` (config/ignore-list files only) into the final image; the actual template YAMLs `-update-templates` writes live at `/root/nuclei-templates` (confirmed via `.templates-config.json` on the running container). The deployed image had the binary but **zero templates** until this was fixed — every deep scan would have run cleanly and reported "no issues found" regardless of what the target exposed.
+4. **VM too small** — 512MB RAM / 1 shared CPU left ~9.6MB free with load average ~2.0; a single nuclei run hadn't even finished loading templates after 100s+. Bumped `fly.toml`'s `[[vm]]` to 2048MB / 2 shared CPUs.
+5. **Timeout too short** — even on the bigger VM, a full scan against a real target took ~257s; `NucleiScanner`'s subprocess timeout was 120s (an unbenchmarked guess from the original CLAUDE.md convention). Raised to 300s in both the scanner code and the documented convention.
+
+Verified post-fix: `nuclei -version` reports `v3.9.0` on the live container, 13,235 template YAMLs present, and a real scan against a test domain returned genuine findings (DNS WAF detection, Azure tenant ID exposure) within the new timeout budget. Health check passing on all machines. Scanner suite still 136/136 after the timeout-value test updates.*
+
 *Last updated: 2026-06-16 — scan-tier branching + Supabase exposure scanner merged · admin profile RLS hole closed · admin user-detail 500 fixed (illegal RSC event handler) · `scans.type`→`scan_type` bug fixed · sign-out added app-wide · product roadmap re-prioritized after report/scanner critique (Sprint 1: reporting reframe + stack detection; Sprint 2: secrets + storage scanners; IDOR/multi-tenant/prompt-injection deprioritized)*
 
 *2026-06-17 — security review remediation (branch `security-fixes-rls-redirect`): **A1** findings column-leak to anon closed via `public_findings` view + dropped broad anon policy (migration 18, APPLIED to remote); **A2** table-wide anon `badges` policy dropped (migration 18, APPLIED); **A3** auth-callback `next` open-redirect validated to same-origin; **A4** Stripe webhook now links via `client_reference_id` not the non-existent `profiles.email` column (was a dead no-op); **A5** Finding security invariant documented + regression test that row contents never leak into findings; **C5** admin password-reset now actually sends (was `generateLink` no-op → `resetPasswordForEmail`); **B3** `/trust` page shipped with scanner egress IPs; **legal layer** `/terms` + `/privacy` drafted (LAWYER-REVIEW placeholders) + sign-up Terms/Privacy acceptance gate + onboard "I am authorised" acknowledgement (D7). GitGuardian "service-role JWT" alert = FALSE POSITIVE on a test fixture (no real key leaked); fixture rebuilt at runtime so it stops flagging. Migrations 18 + 19 both APPLIED to remote. **Still open (operational, not code):** C3 retention purge job + account-deletion cascade verification; C2 sub-processor DPAs; lawyer review of `/terms` + `/privacy` before paid launch. See `Security-feedback.md` for the per-item status. — Merged to master + pushed.*
@@ -247,7 +256,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 
 ## Scanner Service (apps/scanner/)
 
-**Status: Built and tested. Awaiting Fly.io deployment.**
+**Status: Built, tested, and deployed.** All scanners through the Nuclei deep-tier work are live in production as of 2026-06-17.
 
 | Component | Status | Notes |
 |---|---|---|
