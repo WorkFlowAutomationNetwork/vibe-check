@@ -2,12 +2,16 @@ from datetime import datetime, timezone
 
 from lib import consent
 from lib.settings import settings
+from lib.storage import upload_report_pdf
 from lib.supabase import get_supabase
 from reports.grader import grade
+from reports.renderer import render_report_pdf
 from scanners.headers import HeadersScanner
 from scanners.tls import TLSScanner
 from scanners.supabase_exposure import SupabaseExposureScanner
+from scanners.storage_exposure import StorageExposureScanner
 from scanners.secrets import SecretsScanner
+from scanners.rate_limit import RateLimitScanner
 from jobs.config import celery_app
 
 
@@ -30,7 +34,7 @@ def _scanners_for_tier(scan_type: str) -> list:
     name in this module's globals, and that rebinding is only picked up
     if the lookup happens at call time."""
     passive = [HeadersScanner, TLSScanner]
-    active = [*passive, SupabaseExposureScanner, SecretsScanner]
+    active = [*passive, SupabaseExposureScanner, StorageExposureScanner, SecretsScanner, RateLimitScanner]
     deep = [*active]  # no deep-only scanners yet — seam for Nuclei etc.
 
     tiers = {
@@ -66,6 +70,18 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
 
         letter, score = grade(findings)
 
+        # PDF generation is best-effort: a rendering failure shouldn't fail a
+        # scan whose security findings are already written to the DB.
+        try:
+            pdf_bytes = render_report_pdf(
+                url,
+                {"id": scan_id, "scan_type": scan_type, "grade": letter, "score": score},
+                [f.to_dict() for f in findings],
+            )
+            pdf_storage_path = upload_report_pdf(user_id, scan_id, pdf_bytes)
+        except Exception:
+            pdf_storage_path = None
+
         _mark_scan(
             scan_id,
             status="completed",
@@ -73,6 +89,7 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
             score=score,
             completed_at=_now(),
             scanner_version=settings.scanner_version,
+            pdf_storage_path=pdf_storage_path,
         )
 
     except Exception as exc:

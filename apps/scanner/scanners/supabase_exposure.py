@@ -1,43 +1,28 @@
-import re
-
 import httpx
 
 from lib.js_extraction import fetch_page_and_scripts
-from lib.jwt import JWT_RE, decode_jwt_role
+from lib.supabase_creds import extract_supabase_credentials
 from scanners.base import BaseScanner, Finding
 
-_SUPABASE_URL_RE = re.compile(r"https://[a-z0-9]+\.supabase\.co")
 _MAX_TABLES = 50
 
-
-def _find_anon_jwt(blob: str) -> str | None:
-    """Return the first JWT-shaped match in blob whose decoded role is "anon"."""
-    for match in JWT_RE.finditer(blob):
-        token = match.group(0)
-        if decode_jwt_role(token) == "anon":
-            return token
-    return None
-
-
-def _extract_supabase_credentials(blobs: list[str]) -> tuple[str, str] | None:
-    url: str | None = None
-    key: str | None = None
-    for blob in blobs:
-        if url is None:
-            match = _SUPABASE_URL_RE.search(blob)
-            if match:
-                url = match.group(0)
-        if key is None:
-            key = _find_anon_jwt(blob)
-        if url and key:
-            return url, key
-    return None
+# Common table names worth guessing directly when the OpenAPI root spec
+# doesn't disclose paths (schema introspection disabled, or a proxy strips
+# the `paths` key) — covers the same exposure even without discovery.
+_COMMON_TABLE_NAMES = [
+    "users", "profiles", "accounts", "user_profiles", "customers",
+    "orders", "products", "posts", "comments", "messages", "chats",
+    "sessions", "subscriptions", "payments", "invoices", "transactions",
+    "items", "files", "documents", "uploads", "notifications", "teams",
+    "organizations", "projects", "tasks", "todos", "settings", "logs",
+    "events", "leads", "contacts", "tickets",
+]
 
 
 class SupabaseExposureScanner(BaseScanner):
     def run(self) -> list[Finding]:
         blobs = fetch_page_and_scripts(self.url, self.timeout)
-        creds = _extract_supabase_credentials(blobs)
+        creds = extract_supabase_credentials(blobs)
         if not creds:
             return []
 
@@ -58,11 +43,29 @@ class SupabaseExposureScanner(BaseScanner):
         except ValueError:
             return []
         tables = [p.lstrip("/") for p in paths if p not in ("/", "")]
-        return tables[:_MAX_TABLES]
+
+        # OpenAPI introspection can be disabled or stripped by a proxy, in
+        # which case `paths` comes back empty even though the REST endpoint
+        # itself is reachable — fall back to guessing common table names so
+        # the same RLS-exposure check still has something to probe.
+        if not tables:
+            tables = list(_COMMON_TABLE_NAMES)
+
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for table in tables:
+            if table not in seen:
+                seen.add(table)
+                deduped.append(table)
+        return deduped[:_MAX_TABLES]
 
     def _probe_tables(self, supabase_url: str, anon_key: str, tables: list[str]) -> list[Finding]:
         headers = {"apikey": anon_key, "Authorization": f"Bearer {anon_key}"}
         exposed: list[tuple[str, int]] = []
+        # Guessed table names that don't exist return non-200 and are dropped
+        # here — only count tables that actually responded for the pass message,
+        # so a guess-only run doesn't claim to have "found" tables it merely tried.
+        confirmed_count = 0
 
         for table in tables:
             try:
@@ -80,6 +83,7 @@ class SupabaseExposureScanner(BaseScanner):
                 rows = response.json()
             except ValueError:
                 continue
+            confirmed_count += 1
             if isinstance(rows, list) and len(rows) > 0:
                 exposed.append((table, len(rows)))
 
@@ -110,14 +114,14 @@ class SupabaseExposureScanner(BaseScanner):
                 for table, count in exposed
             ]
 
-        if tables:
+        if confirmed_count:
             return [Finding(
                 check_name="supabase-rls-exposure",
                 severity="pass",
                 category="endpoints",
                 title="Supabase tables found, none publicly readable",
                 description=(
-                    f"Found {len(tables)} table(s) exposed via the Supabase REST API; "
+                    f"Found {confirmed_count} table(s) exposed via the Supabase REST API; "
                     "none returned data when queried with the public anon key."
                 ),
                 what_we_did="Queried each discovered table with the site's public anon key and checked for returned rows.",

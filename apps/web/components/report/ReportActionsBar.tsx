@@ -4,19 +4,43 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ScanTypePicker, { type ScanType } from '@/components/scan/ScanTypePicker'
 import { useScanEligibility } from '@/lib/hooks/useScanEligibility'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   scanId: string
   urlId: string
+  pdfStoragePath?: string | null
 }
 
-export default function ReportActionsBar({ scanId, urlId }: Props) {
+export default function ReportActionsBar({ scanId, urlId, pdfStoragePath }: Props) {
   const [shareCopied, setShareCopied] = useState(false)
   const [rescanOpen, setRescanOpen] = useState(false)
   const [rescanning, setRescanning] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [scanType, setScanType] = useState<ScanType>('passive')
   const router = useRouter()
   const { allowedScanTypes, isAdmin } = useScanEligibility()
+
+  async function downloadPdf() {
+    if (!pdfStoragePath) {
+      alert('No PDF is available for this scan yet.')
+      return
+    }
+    setDownloadingPdf(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.storage
+        .from('reports')
+        .createSignedUrl(pdfStoragePath, 60)
+      if (error || !data?.signedUrl) {
+        alert('Could not generate a download link. Please try again.')
+        return
+      }
+      window.open(data.signedUrl, '_blank')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   function shareReport() {
     const publicUrl = `${window.location.origin}/report/${scanId}/public`
@@ -53,9 +77,11 @@ export default function ReportActionsBar({ scanId, urlId }: Props) {
         </button>
         <button
           className="btn btn-soft"
-          onClick={() => alert('PDF download will be available once the scanner service is running.')}
+          onClick={downloadPdf}
+          disabled={downloadingPdf || !pdfStoragePath}
+          title={pdfStoragePath ? undefined : 'No PDF available for this scan yet'}
         >
-          ⇩ Download PDF
+          {downloadingPdf ? 'Preparing…' : '⇩ Download PDF'}
         </button>
         <button className="btn btn-primary" onClick={() => setRescanOpen(o => !o)}>
           ↻ Re-scan {rescanOpen ? '▴' : '▾'}

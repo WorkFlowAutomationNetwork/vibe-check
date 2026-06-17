@@ -105,6 +105,40 @@ def test_service_role_jwt_alone_is_not_used_as_credentials():
     assert findings == []
 
 
+def test_empty_openapi_paths_falls_back_to_common_table_guesses():
+    with respx.mock:
+        _mock_page_and_script()
+        respx.get(f"{SUPABASE_URL}/rest/v1/").mock(return_value=httpx.Response(200, json={"paths": {}}))
+        respx.get(f"{SUPABASE_URL}/rest/v1/profiles").mock(
+            return_value=httpx.Response(200, json=[{"id": 1}])
+        )
+        respx.route(method="GET", url__regex=rf"{SUPABASE_URL}/rest/v1/.+").mock(
+            return_value=httpx.Response(404)
+        )
+        # More specific route registered last wins in respx priority order,
+        # so re-register the profiles mock to take precedence over the catch-all.
+        respx.get(f"{SUPABASE_URL}/rest/v1/profiles").mock(
+            return_value=httpx.Response(200, json=[{"id": 1}])
+        )
+        findings = SupabaseExposureScanner(BASE_URL).run()
+
+    assert len(findings) == 1
+    assert findings[0].severity == "critical"
+    assert "profiles" in findings[0].title
+
+
+def test_guesses_that_all_404_produce_no_false_pass_claim():
+    with respx.mock:
+        _mock_page_and_script()
+        respx.get(f"{SUPABASE_URL}/rest/v1/").mock(return_value=httpx.Response(200, json={"paths": {}}))
+        respx.route(method="GET", url__regex=rf"{SUPABASE_URL}/rest/v1/.+").mock(
+            return_value=httpx.Response(404)
+        )
+        findings = SupabaseExposureScanner(BASE_URL).run()
+
+    assert findings == []
+
+
 def test_anon_jwt_is_used_even_when_service_role_jwt_also_present():
     with respx.mock:
         respx.get(BASE_URL + "/").mock(return_value=httpx.Response(200, text=PAGE_HTML))

@@ -116,7 +116,7 @@ export default async function ReportPage({ params }: Props) {
               {scan.checks_total && <span>checks <b>{scan.checks_total}</b></span>}
             </div>
           </div>
-          <ReportActionsBar scanId={params.scanId} urlId={scan.url_id} />
+          <ReportActionsBar scanId={params.scanId} urlId={scan.url_id} pdfStoragePath={scan.pdf_storage_path} />
         </div>
 
         {scan.status === 'failed' ? (

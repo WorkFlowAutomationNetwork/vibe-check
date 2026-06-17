@@ -32,6 +32,13 @@ def mock_scanners_empty():
         yield
 
 
+@pytest.fixture(autouse=True)
+def mock_pdf_pipeline():
+    with patch("jobs.tasks.render_report_pdf", return_value=b"%PDF-1.7 fake") as mr, \
+         patch("jobs.tasks.upload_report_pdf", return_value="user-1/scan-1.pdf") as mu:
+        yield mr, mu
+
+
 def test_run_scan_marks_running_then_completed(mock_sb, mock_consent_ok, mock_scanners_empty):
     from jobs.tasks import _execute_scan
     _execute_scan(FakeSelf(), "scan-1", "url-1", "passive", "user-1")
@@ -127,6 +134,29 @@ def test_deep_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
         _execute_scan(FakeSelf(), "scan-1", "url-1", "deep", "user-1")
 
     ms.assert_called_once_with("https://example.com")
+
+
+def test_run_scan_uploads_pdf_and_stores_path(mock_sb, mock_consent_ok, mock_scanners_empty, mock_pdf_pipeline):
+    from jobs.tasks import _execute_scan
+    _execute_scan(FakeSelf(), "scan-1", "url-1", "passive", "user-1")
+
+    mock_render, mock_upload = mock_pdf_pipeline
+    mock_render.assert_called_once()
+    mock_upload.assert_called_once_with("user-1", "scan-1", b"%PDF-1.7 fake")
+
+    update_calls = mock_sb.table.return_value.update.call_args_list
+    completed_call = next(c for c in update_calls if c[0][0].get("status") == "completed")
+    assert completed_call[0][0]["pdf_storage_path"] == "user-1/scan-1.pdf"
+
+
+def test_run_scan_completes_even_when_pdf_rendering_fails(mock_sb, mock_consent_ok, mock_scanners_empty):
+    from jobs.tasks import _execute_scan
+    with patch("jobs.tasks.render_report_pdf", side_effect=RuntimeError("no native libs")):
+        _execute_scan(FakeSelf(), "scan-1", "url-1", "passive", "user-1")
+
+    update_calls = mock_sb.table.return_value.update.call_args_list
+    completed_call = next(c for c in update_calls if c[0][0].get("status") == "completed")
+    assert completed_call[0][0]["pdf_storage_path"] is None
 
 
 def test_deep_tier_matches_active_tier():

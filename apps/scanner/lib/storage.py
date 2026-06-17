@@ -1,5 +1,16 @@
-# PDF upload to Supabase Storage — not implemented in Step 1.
-# Placeholder so queue/tasks.py can import it without error.
+from lib.supabase import get_supabase
 
-def upload_pdf(scan_id: str, pdf_bytes: bytes) -> str:
-    raise NotImplementedError("PDF upload not implemented in Step 1")
+_BUCKET = "reports"
+
+
+def upload_report_pdf(user_id: str, scan_id: str, pdf_bytes: bytes) -> str:
+    """Uploads a rendered report PDF to the private `reports` Storage bucket
+    at `{user_id}/{scan_id}.pdf` (RLS scopes each user to their own folder —
+    see migration 20260521000015) and returns that storage path."""
+    path = f"{user_id}/{scan_id}.pdf"
+    get_supabase().storage.from_(_BUCKET).upload(
+        path,
+        pdf_bytes,
+        {"content-type": "application/pdf", "x-upsert": "true"},
+    )
+    return path

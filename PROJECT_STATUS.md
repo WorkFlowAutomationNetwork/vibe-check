@@ -10,6 +10,12 @@
 
 *2026-06-17 (later still) — **Sprint 2 item 6 done: secrets scanner** (`scanners/secrets.py::SecretsScanner`, built via brainstorm→spec→plan→subagent-driven TDD). Scans page + JS bundles for leaked credentials → `critical` each (incl. test-mode keys); publishable keys → `pass` note; masks to last-4 (A5); dedupes; runs on active/deep. Extracted shared `lib/jwt.py`. Scanner suite 84/84 green. Spec: `docs/superpowers/specs/2026-06-17-secrets-scanner-design.md`; plan: `docs/superpowers/plans/2026-06-17-secrets-scanner.md`. ⚠️ **Scanner redeploy to Fly.io** required (covers both the Sprint 1 header check and this).*
 
+*2026-06-17 (latest) — **Sprint 3 item 9 done: rate-limit probe.** `scanners/rate_limit.py::RateLimitScanner` — discovers a login endpoint (first tries a `<form>` with a password input on the page, then falls back to common paths like `/api/auth/login`, `/login`, `/signin`), sends exactly 8 POSTs with bogus credentials, and flags `medium` if none of them show a 429 or `Retry-After` (pass if throttling is observed). Scoped to **login only**, deliberately — probing signup/contact forms with fake data would actually create the spam-account harm this check exists to surface, whereas failed logins have no side effects. Wired into the `active` tier (inherited by `deep`) in `jobs/tasks.py`. Scanner suite 105→**116/116 green** (+11: 8 scanner tests, 3 tier-inclusion tests).*
+
+*2026-06-17 (latest) — **PDF report generation built.** `reports/templates/report.html` (Jinja2) + `reports/renderer.py::render_report_html/render_report_pdf` (WeasyPrint) render a branded PDF (grade card, issues sorted by severity, passing checks) from scan+findings data. `lib/storage.py::upload_report_pdf` uploads it to the existing private `reports` Storage bucket at `{user_id}/{scan_id}.pdf` (RLS already scopes each user to their own folder — migration 015). Wired into `jobs/tasks.py::_execute_scan`: runs after grading, on every completed scan regardless of tier; failure is non-fatal (`pdf_storage_path` just stays `null`) since the security findings are already persisted. Web: `/report/[scanId]` now passes `scan.pdf_storage_path` to `ReportActionsBar`, whose "Download PDF" button calls `supabase.storage.from('reports').createSignedUrl()` from the browser (no new API route needed — existing RLS policy already restricts the signed-URL grant to the owning user) and opens it in a new tab; button is disabled with a tooltip when no PDF exists yet. Dockerfile installs the native Pango/Cairo/GObject libs WeasyPrint needs (absent on a bare Windows dev box — confirmed locally, `weasyprint.HTML(...).write_pdf()` fails without them; `renderer.py` imports it defensively so the module still loads and is testable via mocking `reports.renderer.weasyprint`). Scanner suite 97→**105/105 green** (+8: renderer HTML/PDF, storage upload, two tasks-wiring tests). Also fixed a latent bug from the storage-exposure scanner: it used `category="storage"`, which isn't in the `findings.category` DB check constraint (`headers/transport/ai/auth/cors/deps/endpoints/secrets`) — would have failed every insert in production. Changed to `"endpoints"`, consistent with the table-exposure scanner. ⚠️ **Scanner redeploy to Fly.io required** — stacks on the still-pending redeploys for the header check, secrets scanner, and items 7/8.*
+
+*2026-06-17 (even later) — **Sprint 2 items 7 + 8 done.** **Item 7:** `SupabaseExposureScanner._discover_tables` now falls back to a ~30-name common-table guess list (`users`, `profiles`, `orders`, etc.) when the OpenAPI root spec discloses no `paths` (introspection disabled or stripped by a proxy) — same RLS-exposure check still runs, just without discovery. The "tables found, none exposed" pass message now counts only tables that actually returned 200 (not raw guesses), so an all-404 guess run no longer falsely claims tables were "found". **Item 8:** new `scanners/storage_exposure.py::StorageExposureScanner` — lists Supabase Storage buckets via the same page-derived anon key (`GET /storage/v1/bucket`), then for every bucket **not** marked `public`, attempts `POST /storage/v1/object/list/{bucket}`; a non-empty result means storage.objects RLS is missing/too permissive → `critical` (file names never stored, only counts, per the A5 invariant). Empty listings are treated as ambiguous (Supabase storage RLS silently filters rather than denying) and not flagged. Buckets explicitly marked public are skipped entirely (expected). Shared anon-key/URL extraction logic moved out of `supabase_exposure.py` into `lib/supabase_creds.py` so both scanners use it. Wired into `jobs/tasks.py::_scanners_for_tier` on `active`/`deep`. Scanner suite 84→**97/97 green** (+13 tests: 2 for item 7 fallback, 8 for the new storage scanner, 3 for tier-inclusion). ⚠️ **Scanner redeploy to Fly.io required** (stacks on top of the still-pending header-check + secrets-scanner redeploy).*
+
 ---
 
 ## ⚠️ Known Issues — Check These First
@@ -224,7 +230,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 |---|---|---|---|
 | AppShell | `components/shared/AppShell.tsx` | ✅ | `'use client'` — fetches user/isAdmin/plan via browser Supabase client on mount. |
 | AdminShell | `components/admin/AdminShell.tsx` | ✅ | Sidebar nav for all /admin routes. |
-| ReportActionsBar | `components/report/ReportActionsBar.tsx` | ✅ | `'use client'` — Share, Download PDF, Re-scan buttons. |
+| ReportActionsBar | `components/report/ReportActionsBar.tsx` | ✅ | `'use client'` — Share, Download PDF, Re-scan buttons. Download PDF creates a signed Storage URL client-side from `scan.pdf_storage_path`; disabled with a tooltip if no PDF exists yet. |
 | FindingsList | `components/report/FindingsList.tsx` | ✅ | `'use client'` — splits into "Issues (n)" + "What's working (n)"; expand/collapse, severity sort, "expand all". |
 | StackUpgradeBlock | `components/report/StackUpgradeBlock.tsx` | ✅ | Server component — "Detected stack" (from `metadata.detected`) + "Active scans available/included" (static catalogue). Upgrade CTA on passive/free scans. |
 | ScanPollingView | `components/report/ScanPollingView.tsx` | ✅ | `'use client'` — polls `/api/scans?id=`, redirects on complete. |
@@ -250,16 +256,18 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `consent.verify()` | ✅ | Runs before every scan. Raises `ConsentError` if URL not verified. |
 | `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy + **tech-stack disclosure** (`_check_tech_disclosure`: x-powered-by/server/x-fah-adapter/…, detected stack in `metadata`) |
 | `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
-| `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Runs on `active`/`deep` tiers only. |
+| `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Falls back to a common-table-name guess list when OpenAPI introspection discloses no `paths`. Runs on `active`/`deep` tiers only. |
+| `StorageExposureScanner` | ✅ | Detects Supabase Storage buckets (not marked public) whose contents are listable via the site's own public anon key — missing/too-permissive RLS on `storage.objects`. File names never stored (counts only, A5). `active`/`deep` tiers. Shares `lib/supabase_creds.py` with the table-exposure scanner. |
 | `SecretsScanner` | ✅ | Scans page + same-origin JS bundles for leaked credentials (Stripe sk_/rk_, OpenAI, Anthropic, AWS AKIA, GitHub, Slack, SendGrid, npm, private keys, Supabase service-role JWT) → `critical` each (incl. test-mode keys). Publishable keys (Stripe pk_, Supabase anon, Google/Firebase AIza) → `pass` "expected" note. Masks to last-4 only (full secret never stored, A5). Dedupes by content fingerprint. `active`/`deep` tiers. Shares `lib/jwt.py` with the exposure scanner. |
-| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase exposure check. `deep` has no additional scanners yet. |
+| `RateLimitScanner` | ✅ | Sends 8 bogus-credential POSTs to a discovered login endpoint (form-derived or common-path fallback); flags `medium` if none are throttled (no 429/Retry-After). Login-only by design (signup probing would itself create spam accounts). `active`/`deep` tiers. |
+| Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase table exposure + Storage bucket exposure + secrets + rate-limit probe. `deep` has no additional scanners yet. |
 | `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
 | fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
-| Tests | ✅ | 84/84 passing |
+| Tests | ✅ | 116/116 passing |
 | Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
-| PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
+| PDF generation | ✅ | `reports/renderer.py` (Jinja2 + WeasyPrint) + `lib/storage.py` upload to `reports` bucket. Runs on every completed scan in `jobs/tasks.py`. Web "Download PDF" button wired via signed URL. ⚠️ needs Fly.io redeploy (Dockerfile updated with native Pango/Cairo libs). |
 
 **Deployed at:** `https://vibe-check-scanner.fly.dev` — health check `{"status":"ok","version":"0.1.0"}` confirmed live.
 
@@ -307,8 +315,10 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
 | Admin unlimited-scan bypass | ✅ Confirmed secure | `can_run_scan_type()`/`can_add_url()` (migration 014) already bypass for `is_admin = true` at the RLS layer — verified end-to-end by inserting a `deep` scan as the admin account on the `free` plan. Closed a related hole in migration 017: the `profiles` "update own row" RLS policy had no column restriction, so any user could have PATCHed their own `is_admin`/`plan`/`stripe_*` fields directly. Now blocked by a `BEFORE UPDATE` trigger unless `auth.role() = 'service_role'`. |
 | No exposed-secrets scanner | ✅ Resolved 2026-06-17 | `scanners/secrets.py` (`SecretsScanner`) scans JS bundles for leaked credentials, runs on active/deep. Sprint 2 item 6. ⚠️ scanner redeploy required for prod. |
-| Supabase/PostgREST exposed-data check | ✅ Built | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. |
-| No SQLi/XSS/rate-limit checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. No probe for missing rate limiting on forms/login (10k fake registration / spam vector called out repeatedly in Reddit post). |
+| Supabase/PostgREST exposed-data check | ✅ Built + extended 2026-06-17 | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. Sprint 2 item 7: now falls back to common-table-name guessing when OpenAPI introspection is disabled. |
+| No Storage bucket exposure check | ✅ Resolved 2026-06-17 | `scanners/storage_exposure.py` (`StorageExposureScanner`) — Sprint 2 item 8. Checks non-public buckets for anon-key-listable contents (missing storage.objects RLS). ⚠️ scanner redeploy required for prod. |
+| No SQLi/XSS checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. |
+| No rate-limit probe | ✅ Resolved 2026-06-17 | `scanners/rate_limit.py` (`RateLimitScanner`) — Sprint 3 item 9. Login-endpoint only. ⚠️ scanner redeploy required for prod. |
 
 ---
 
@@ -327,13 +337,13 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 4. ✅ **"Detected Stack" + "Active Scans Available" block** — `components/report/StackUpgradeBlock.tsx`, rendered on `/report/[scanId]`. Reads `metadata.detected`; shows upgrade CTA on passive/free scans, "included" on active/deep.
 5. 🟡 **Copy pass** — New surfaces (tech-disclosure finding, StackUpgradeBlock) + the missing-CSP finding reframed in Supabase/Next.js/Vercel terms. Remaining generic header/TLS finding copy not yet reframed — small follow-up.
 
-### Sprint 2 — New scanners (paid tiers)
-6. **Secrets scanner** — `scanners/secrets.py`, scans JS bundles loaded by the page for OpenAI/Stripe/AWS/Supabase-service-key/Firebase credential patterns. Flag `critical`/`high` in the `secrets` category. Highest-value new scanner — pair with Supabase exposure as the flagship "we find what vibe-coding tools leak" pitch.
-7. **Supabase/PostgREST exposed-data check refinement** — already built (`supabase_exposure.py`); extend table-name coverage if needed.
-8. **Public storage exposure (Supabase Storage only for now)** — extend the existing Supabase-exposure auth pattern to check public bucket listing via the anon key. Do **not** bundle generic S3/R2/Firebase bucket discovery into this — that's a different problem (bucket-name guessing) and a separate task if pursued later.
+### Sprint 2 — New scanners (paid tiers) — ✅ DONE (2026-06-17)
+6. ✅ **Secrets scanner** — `scanners/secrets.py`, scans JS bundles loaded by the page for OpenAI/Stripe/AWS/Supabase-service-key/Firebase credential patterns. Flag `critical`/`high` in the `secrets` category. Highest-value new scanner — pair with Supabase exposure as the flagship "we find what vibe-coding tools leak" pitch.
+7. ✅ **Supabase/PostgREST exposed-data check refinement** — `supabase_exposure.py` now falls back to a common-table-name guess list when OpenAPI `paths` discovery is empty.
+8. ✅ **Public storage exposure (Supabase Storage only for now)** — `scanners/storage_exposure.py`, extends the Supabase-exposure auth pattern to check non-public bucket listing via the anon key. Generic S3/R2/Firebase bucket discovery deliberately out of scope (different problem — bucket-name guessing).
 
 ### Sprint 3 — Operational depth
-9. **Rate-limit probe** — 5-10 requests against login/signup/contact forms, flag `medium` if no throttling observed. Paid-tier only.
+9. ✅ **Rate-limit probe** — `scanners/rate_limit.py`. 8 requests against a discovered login endpoint only (not signup/contact — see note above), flags `medium` if no throttling observed. `active`/`deep` tiers.
 10. **Integrations OAuth** — GitHub OAuth for CVE scanning, Vercel webhook for deploy-triggered re-scans.
 11. **CVE monitoring** — ties into Monitor tier's "continuous protection" pitch.
 
@@ -344,7 +354,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 - **Write activity_log + badge in scanner** — Add `activity_log` writes and `badges` row creation to `jobs/tasks.py` in scanner service. Deploy update.
 - **Stripe products** — Create Free/Starter/Monitor products in Stripe dashboard. Add price IDs to env. Build `/api/billing/checkout` session creation route. Wire upgrade buttons.
 - **NEXT_PUBLIC_APP_URL env var** — Add to `.env.example` and set in Vercel env. Required for badge embed codes and Stripe portal return URL.
-- **PDF generation** — WeasyPrint renderer in scanner service (`reports/renderer.py`).
+- ~~**PDF generation**~~ ✅ **DONE** — `reports/renderer.py` + `lib/storage.py`, wired into `jobs/tasks.py` and the report page's Download PDF button. Needs Fly.io redeploy.
 - **Active scanning (Nuclei)** — Add Nuclei integration once CLI tools confirmed on Fly.io machine.
 - **Resend emails** — Welcome email on signup, scan complete notification, CVE alert emails.
 - ~~**End-to-end scan test**~~ ✅ **DONE** — chorusproject.io scanned successfully. 4 medium, 2 low, 1 pass. Findings written to DB and rendered in report UI.
@@ -377,9 +387,18 @@ apps/scanner/
   scanners/base.py                   ← Finding dataclass + BaseScanner ABC
   scanners/headers.py                ← HTTP security header checks (httpx)
   scanners/tls.py                    ← TLS/SSL checks (sslyze)
+  scanners/supabase_exposure.py      ← Supabase table RLS exposure check (+ table-name guess fallback)
+  scanners/storage_exposure.py       ← Supabase Storage bucket RLS exposure check
+  scanners/secrets.py                ← Leaked credential scanner (JS bundles)
+  scanners/rate_limit.py             ← Login-endpoint rate-limit probe (8 bogus-credential POSTs)
+  lib/supabase_creds.py              ← Shared Supabase URL/anon-key extraction (used by both exposure scanners)
+  lib/jwt.py                         ← Shared JWT decode (role claim only, no signature verification)
   lib/consent.py                     ← consent.verify() — MUST run before any scan
   lib/supabase.py                    ← supabase-py service role client singleton
+  lib/storage.py                     ← upload_report_pdf() — pushes rendered PDF to the `reports` Storage bucket
   reports/grader.py                  ← grade(findings) → (letter, score)
+  reports/renderer.py                ← render_report_html()/render_report_pdf() — Jinja2 + WeasyPrint
+  reports/templates/report.html      ← Jinja2 PDF report template
   fly.toml                           ← Fly.io config (web + worker processes)
   Dockerfile                         ← Python 3.12-slim image
   tests/                             ← 84 tests, all passing
