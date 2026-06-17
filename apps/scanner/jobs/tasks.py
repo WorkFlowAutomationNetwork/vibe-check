@@ -12,6 +12,7 @@ from scanners.supabase_exposure import SupabaseExposureScanner
 from scanners.storage_exposure import StorageExposureScanner
 from scanners.secrets import SecretsScanner
 from scanners.rate_limit import RateLimitScanner
+from scanners.nuclei import NucleiScanner
 from jobs.config import celery_app
 
 
@@ -25,8 +26,7 @@ def _mark_scan(scan_id: str, **fields) -> None:
 
 def _scanners_for_tier(scan_type: str) -> list:
     """Cumulative tiers: active runs everything passive runs, plus more;
-    deep runs everything active runs, plus more (currently identical to
-    active — this is the seam for future intrusive scanners).
+    deep runs everything active runs, plus more.
 
     The lists below are built fresh on every call (not module-level
     constants) so that `unittest.mock.patch("jobs.tasks.HeadersScanner")`
@@ -35,7 +35,7 @@ def _scanners_for_tier(scan_type: str) -> list:
     if the lookup happens at call time."""
     passive = [HeadersScanner, TLSScanner]
     active = [*passive, SupabaseExposureScanner, StorageExposureScanner, SecretsScanner, RateLimitScanner]
-    deep = [*active]  # no deep-only scanners yet — seam for Nuclei etc.
+    deep = [*active, NucleiScanner]
 
     tiers = {
         "passive": passive,

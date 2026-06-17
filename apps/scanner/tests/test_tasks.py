@@ -126,10 +126,12 @@ def test_active_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
 def test_deep_scan_runs_supabase_exposure_scanner(mock_sb, mock_consent_ok):
     with patch("jobs.tasks.HeadersScanner") as mh, \
          patch("jobs.tasks.TLSScanner") as mt, \
-         patch("jobs.tasks.SupabaseExposureScanner") as ms:
+         patch("jobs.tasks.SupabaseExposureScanner") as ms, \
+         patch("jobs.tasks.NucleiScanner") as mn:
         mh.return_value.run.return_value = []
         mt.return_value.run.return_value = []
         ms.return_value.run.return_value = []
+        mn.return_value.run.return_value = []
         from jobs.tasks import _execute_scan
         _execute_scan(FakeSelf(), "scan-1", "url-1", "deep", "user-1")
 
@@ -157,11 +159,3 @@ def test_run_scan_completes_even_when_pdf_rendering_fails(mock_sb, mock_consent_
     update_calls = mock_sb.table.return_value.update.call_args_list
     completed_call = next(c for c in update_calls if c[0][0].get("status") == "completed")
     assert completed_call[0][0]["pdf_storage_path"] is None
-
-
-def test_deep_tier_matches_active_tier():
-    """Encodes the invariant that `deep` is currently a pure extension of
-    `active` — if someone adds a scanner to one tier's list without
-    updating the other, this test catches the drift."""
-    from jobs.tasks import _scanners_for_tier
-    assert _scanners_for_tier("deep") == _scanners_for_tier("active")
