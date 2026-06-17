@@ -2,6 +2,8 @@ import json
 import subprocess
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from scanners.nuclei import NucleiScanner
 
 URL = "https://example.com"
@@ -37,3 +39,22 @@ def test_single_match_returns_one_finding():
     assert f.description == "Grafana login panel is exposed."
     assert "exposed-panel-grafana" in f.what_we_did
     assert "https://example.com/grafana/login" in f.what_we_did
+
+
+@pytest.mark.parametrize("raw_severity,expected", [
+    ("info", "info"),
+    ("low", "low"),
+    ("medium", "medium"),
+    ("high", "critical"),
+    ("critical", "critical"),
+])
+def test_severity_mapping(raw_severity, expected):
+    match = {
+        "template-id": "some-template",
+        "info": {"name": "Some Finding", "severity": raw_severity, "description": "d"},
+        "matched-at": "https://example.com/",
+    }
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(_jsonl(match))):
+        findings = NucleiScanner(URL).run()
+
+    assert findings[0].severity == expected
