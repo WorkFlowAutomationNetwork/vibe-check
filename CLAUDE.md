@@ -343,7 +343,7 @@ Reference HTML designs are in `/design/` — use these as the source of truth fo
 **Python:**
 - Type hints on every function signature.
 - Pydantic models for all API request/response shapes.
-- Subprocess calls to CLI tools always use `timeout` parameter. Nuclei: 120s max. SQLmap: 90s max. DalFox: 60s max.
+- Subprocess calls to CLI tools always use `timeout` parameter. Nuclei: 300s max (measured ~257s for the curated safe-tag scope against a real target on the production VM — 120s was the original plan but killed almost every real scan). SQLmap: 90s max. DalFox: 60s max.
 - All subprocess calls log the full command (redacted of any tokens) to the activity log.
 
 **API design:**

@@ -3,7 +3,10 @@ import subprocess
 
 from scanners.base import BaseScanner, Finding
 
-_TIMEOUT_SECONDS = 120
+# 300s, not the originally-planned 120s: measured against a real target on
+# the production VM, a full run of this tag scope took ~257s. 120s would
+# have killed almost every real scan and silently dropped all findings.
+_TIMEOUT_SECONDS = 300
 _SAFE_TAGS = "cve,exposure,misconfig,default-login,tech"
 _EXCLUDED_TAGS = "dos,fuzz,intrusive"
 _RATE_LIMIT = 50

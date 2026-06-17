@@ -142,7 +142,7 @@ def test_binary_not_found_returns_empty_list():
 
 
 def test_timeout_returns_empty_list():
-    with patch("scanners.nuclei.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="nuclei", timeout=120)):
+    with patch("scanners.nuclei.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="nuclei", timeout=300)):
         findings = NucleiScanner(URL).run()
     assert findings == []
 
@@ -172,4 +172,4 @@ def test_invocation_uses_safe_tag_scope_and_rate_limit():
     assert command[command.index("-etags") + 1] == "dos,fuzz,intrusive"
     assert "-rate-limit" in command
     assert command[command.index("-rate-limit") + 1] == "50"
-    assert kwargs["timeout"] == 120
+    assert kwargs["timeout"] == 300
