@@ -435,7 +435,25 @@ Build order:
 12. Integrations (Vercel webhook, GitHub OAuth)
 
 When working on a feature, read the corresponding HTML reference file in `/design/` first before writing any component code.
-Worth adding to the CLAUDE.md too — just a note that Superpowers is installed and the brainstorming → plan → subagent flow should be used for any new feature work.
+
+---
+
+## Working method (Superpowers)
+
+Superpowers is installed in this project. For any **new feature work or behaviour change**, use the full flow rather than coding ad-hoc:
+
+1. **brainstorming** — explore intent and requirements before touching code.
+2. **writing-plans** → **writing a spec** — specs live in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/` (dated, e.g. `2026-06-17-<feature>-design.md`). Several recent scanners were built this way — follow the same convention.
+3. **test-driven-development** — write the test first; the scanner suite is the regression net.
+4. **subagent-driven-development** — execute plan steps with review checkpoints.
+
+For bugfixes, start with **systematic-debugging**. Before claiming anything is done, use **verification-before-completion** (run the command, show the output). The skill priority is process-first: brainstorming/debugging decide *how*, implementation skills follow.
+
+---
+
+## Marketing vs. product accuracy
+
+The landing page (`app/(marketing)/page.tsx`) was converted from a pre-build design mock and still advertises capabilities the scanner does **not** implement (prompt-injection testing, IDOR/auth-bypass probing, dependency-CVE feed cross-check, "180 checks", "no account" free scan, a 30-day auto-issued badge). Treat marketing copy as **aspirational, not a spec**. Before launch, reconcile the homepage and the billing comparison table against what the scanner actually does (see `PROJECT_STATUS.md` → "Marketing/product mismatches"). Do not cite landing-page copy as evidence a feature exists.
 
 
 
