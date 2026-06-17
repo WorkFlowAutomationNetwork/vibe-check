@@ -55,6 +55,7 @@ export interface ScanRow {
 export interface FindingRow {
   id: string
   scan_id: string
+  check_name: string
   severity: 'critical' | 'medium' | 'low' | 'info' | 'pass'
   category: string
   result: 'pass' | 'fail' | 'warn'
