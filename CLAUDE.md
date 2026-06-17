@@ -344,6 +344,7 @@ Reference HTML designs are in `/design/` — use these as the source of truth fo
 - Type hints on every function signature.
 - Pydantic models for all API request/response shapes.
 - Subprocess calls to CLI tools always use `timeout` parameter. Nuclei: 300s max (measured ~257s for the curated safe-tag scope against a real target on the production VM — 120s was the original plan but killed almost every real scan). SQLmap: 90s max. DalFox: 60s max.
+- RateLimitScanner: capped at 17 requests worst case (1 homepage GET + 2 login-link GETs + 6 generic-path GETs + the 8-POST rate-limit battery, run exactly once on a single chosen target) — see `apps/scanner/scanners/rate_limit.py`.
 - All subprocess calls log the full command (redacted of any tokens) to the activity log.
 
 **API design:**
