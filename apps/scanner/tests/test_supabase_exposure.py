@@ -51,11 +51,14 @@ def _mock_page_and_script():
     respx.get(f"{BASE_URL}/app.js").mock(return_value=httpx.Response(200, text=APP_JS))
 
 
-def test_no_credentials_found_returns_no_findings():
+def test_no_credentials_found_returns_info_finding():
     with respx.mock:
         respx.get(BASE_URL).mock(return_value=httpx.Response(200, text="<html>no keys here</html>"))
         findings = SupabaseExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-rls-exposure"
+    assert "No Supabase backend" in findings[0].title
 
 
 def test_credentials_found_all_tables_protected_returns_pass():
@@ -87,12 +90,14 @@ def test_exposed_table_returns_critical_without_row_contents():
     assert "victim@example.com" not in findings[0].what_we_did
 
 
-def test_root_schema_request_fails_returns_no_findings():
+def test_root_schema_request_fails_returns_info_finding():
     with respx.mock:
         _mock_page_and_script()
         respx.get(f"{SUPABASE_URL}/rest/v1/").mock(side_effect=httpx.ConnectError("refused"))
         findings = SupabaseExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-rls-exposure"
 
 
 def test_service_role_jwt_alone_is_not_used_as_credentials():
@@ -102,7 +107,8 @@ def test_service_role_jwt_alone_is_not_used_as_credentials():
             return_value=httpx.Response(200, text=APP_JS_SERVICE_ROLE_ONLY)
         )
         findings = SupabaseExposureScanner(BASE_URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
 
 
 def test_empty_openapi_paths_falls_back_to_common_table_guesses():
@@ -136,7 +142,9 @@ def test_guesses_that_all_404_produce_no_false_pass_claim():
         )
         findings = SupabaseExposureScanner(BASE_URL).run()
 
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].check_name == "supabase-rls-exposure"
 
 
 def test_anon_jwt_is_used_even_when_service_role_jwt_also_present():

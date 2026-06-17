@@ -24,7 +24,7 @@ class SupabaseExposureScanner(BaseScanner):
         blobs = fetch_page_and_scripts(self.url, self.timeout)
         creds = extract_supabase_credentials(blobs)
         if not creds:
-            return []
+            return [self._no_backend_finding()]
 
         supabase_url, anon_key = creds
         tables = self._discover_tables(supabase_url, anon_key)
@@ -128,4 +128,36 @@ class SupabaseExposureScanner(BaseScanner):
                 remediation="",
             )]
 
-        return []
+        return [self._no_tables_confirmed_finding()]
+
+    def _no_backend_finding(self) -> Finding:
+        return Finding(
+            check_name="supabase-rls-exposure",
+            severity="info",
+            category="endpoints",
+            title="No Supabase backend detected",
+            description=(
+                "This check looks for a Supabase project URL and anon key in the "
+                "site's client-side code. We didn't find one, so this app doesn't "
+                "appear to use Supabase as its database backend — this check only "
+                "applies to apps that do."
+            ),
+            what_we_did="Scanned the page and its JavaScript bundles for a Supabase project URL and anon key.",
+            remediation="",
+        )
+
+    def _no_tables_confirmed_finding(self) -> Finding:
+        return Finding(
+            check_name="supabase-rls-exposure",
+            severity="info",
+            category="endpoints",
+            title="Found a Supabase backend, but couldn't confirm any readable tables",
+            description=(
+                "Found a Supabase project URL and anon key, but none of the table "
+                "names we tried (from the project's own API schema, or a list of "
+                "common table names) returned a successful response — so we "
+                "couldn't confirm any tables exist to check for missing RLS."
+            ),
+            what_we_did="Queried the Supabase REST API for known and commonly-named tables using the site's public anon key.",
+            remediation="",
+        )
