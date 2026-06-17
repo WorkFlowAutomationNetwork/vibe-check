@@ -1,5 +1,5 @@
 # --- Build stage: compile nuclei and pull its template library ---
-FROM golang:1.22-bookworm AS nuclei-build
+FROM golang:1.25-bookworm AS nuclei-build
 
 # Pinned, not @latest: an unpinned version could silently change CLI flags
 # on a redeploy unrelated to this scanner, degrading NucleiScanner to a
