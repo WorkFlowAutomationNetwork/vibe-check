@@ -58,3 +58,46 @@ def test_severity_mapping(raw_severity, expected):
         findings = NucleiScanner(URL).run()
 
     assert findings[0].severity == expected
+
+
+def test_no_matches_returns_single_pass_finding():
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process("")):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 1
+    assert findings[0].severity == "pass"
+    assert findings[0].check_name == "nuclei-scan"
+
+
+def test_multiple_matches_returns_multiple_findings():
+    matches = [
+        {"template-id": "tmpl-a", "info": {"name": "A", "severity": "low", "description": "a"}, "matched-at": "https://example.com/a"},
+        {"template-id": "tmpl-b", "info": {"name": "B", "severity": "critical", "description": "b"}, "matched-at": "https://example.com/b"},
+    ]
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(_jsonl(*matches))):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 2
+    assert {f.check_name for f in findings} == {"nuclei-tmpl-a", "nuclei-tmpl-b"}
+
+
+def test_missing_remediation_falls_back_to_generic_text():
+    match = {
+        "template-id": "tmpl-no-remediation",
+        "info": {"name": "No Remediation Template", "severity": "medium", "description": "d"},
+        "matched-at": "https://example.com/",
+    }
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(_jsonl(match))):
+        findings = NucleiScanner(URL).run()
+
+    assert "Review this finding" in findings[0].remediation
+
+
+def test_malformed_json_line_is_skipped_others_still_parsed():
+    good_match = {"template-id": "tmpl-good", "info": {"name": "Good", "severity": "low", "description": "d"}, "matched-at": "https://example.com/"}
+    stdout = "not valid json\n" + json.dumps(good_match) + "\n"
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(stdout)):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 1
+    assert findings[0].check_name == "nuclei-tmpl-good"
