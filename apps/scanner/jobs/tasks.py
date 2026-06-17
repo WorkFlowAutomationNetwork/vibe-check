@@ -7,6 +7,7 @@ from reports.grader import grade
 from scanners.headers import HeadersScanner
 from scanners.tls import TLSScanner
 from scanners.supabase_exposure import SupabaseExposureScanner
+from scanners.secrets import SecretsScanner
 from jobs.config import celery_app
 
 
@@ -29,7 +30,7 @@ def _scanners_for_tier(scan_type: str) -> list:
     name in this module's globals, and that rebinding is only picked up
     if the lookup happens at call time."""
     passive = [HeadersScanner, TLSScanner]
-    active = [*passive, SupabaseExposureScanner]
+    active = [*passive, SupabaseExposureScanner, SecretsScanner]
     deep = [*active]  # no deep-only scanners yet — seam for Nuclei etc.
 
     tiers = {

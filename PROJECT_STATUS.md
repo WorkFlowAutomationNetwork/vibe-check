@@ -8,6 +8,8 @@
 
 *2026-06-17 (later) — **Sprint 1 finished**: tech/stack-disclosure scanner check (`headers.py::_check_tech_disclosure`, +4 tests, resolves Known Issue #2); `Finding` gains optional `metadata`; report "Issues / What's working" split (positive findings); `StackUpgradeBlock` ("Detected stack" + "Active scans available/included") on `/report/[scanId]`; copy reframe on tech-disclosure + missing-CSP findings. Scanner suite 59/59 green; web build clean. ⚠️ **Scanner needs redeploy to Fly.io** for the new header check to run in prod.*
 
+*2026-06-17 (later still) — **Sprint 2 item 6 done: secrets scanner** (`scanners/secrets.py::SecretsScanner`, built via brainstorm→spec→plan→subagent-driven TDD). Scans page + JS bundles for leaked credentials → `critical` each (incl. test-mode keys); publishable keys → `pass` note; masks to last-4 (A5); dedupes; runs on active/deep. Extracted shared `lib/jwt.py`. Scanner suite 84/84 green. Spec: `docs/superpowers/specs/2026-06-17-secrets-scanner-design.md`; plan: `docs/superpowers/plans/2026-06-17-secrets-scanner.md`. ⚠️ **Scanner redeploy to Fly.io** required (covers both the Sprint 1 header check and this).*
+
 ---
 
 ## ⚠️ Known Issues — Check These First
@@ -87,7 +89,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 |---|---|---|
 | Next.js (apps/web) | ✅ Running | Next.js 14, App Router, TypeScript strict. Build passing. |
 | Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 19 migrations applied. |
-| Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 59 tests. |
+| Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 84 tests. |
 | Redis (Fly.io) | ✅ Deployed | Fly.io managed Redis (Upstash). Connected to scanner. `vibe-check-redis` instance. |
 | Stripe | ⚠️ Client configured | `lib/stripe/client.ts` exists. No products created in Stripe dashboard yet. |
 | Resend (email) | ⚠️ Key needed | Referenced in `.env.example`. Not wired to any send calls yet. |
@@ -249,12 +251,13 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy + **tech-stack disclosure** (`_check_tech_disclosure`: x-powered-by/server/x-fah-adapter/…, detected stack in `metadata`) |
 | `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
 | `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Runs on `active`/`deep` tiers only. |
+| `SecretsScanner` | ✅ | Scans page + same-origin JS bundles for leaked credentials (Stripe sk_/rk_, OpenAI, Anthropic, AWS AKIA, GitHub, Slack, SendGrid, npm, private keys, Supabase service-role JWT) → `critical` each (incl. test-mode keys). Publishable keys (Stripe pk_, Supabase anon, Google/Firebase AIza) → `pass` "expected" note. Masks to last-4 only (full secret never stored, A5). Dedupes by content fingerprint. `active`/`deep` tiers. Shares `lib/jwt.py` with the exposure scanner. |
 | Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase exposure check. `deep` has no additional scanners yet. |
 | `grader.py` | ✅ | A–F grade from findings. -25/critical, -15/high, -8/medium, -3/low |
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
 | fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
-| Tests | ✅ | 59/59 passing |
+| Tests | ✅ | 84/84 passing |
 | Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
 | PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
 
@@ -303,7 +306,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | Badge issued automatically | Low | Scanner does not create a `badges` row on scan completion. Needs to be added to `jobs/tasks.py`. |
 | Activity log not written by scanner | Low | Scanner doesn't write to `activity_log`. Needs to be added to `jobs/tasks.py`. |
 | Admin unlimited-scan bypass | ✅ Confirmed secure | `can_run_scan_type()`/`can_add_url()` (migration 014) already bypass for `is_admin = true` at the RLS layer — verified end-to-end by inserting a `deep` scan as the admin account on the `free` plan. Closed a related hole in migration 017: the `profiles` "update own row" RLS policy had no column restriction, so any user could have PATCHed their own `is_admin`/`plan`/`stripe_*` fields directly. Now blocked by a `BEFORE UPDATE` trigger unless `auth.role() = 'service_role'`. |
-| No exposed-secrets scanner | Medium | `secrets` category exists in `FindingCategory` but no `scanners/secrets.py` module exists. JS bundles aren't checked for leaked API keys/tokens. |
+| No exposed-secrets scanner | ✅ Resolved 2026-06-17 | `scanners/secrets.py` (`SecretsScanner`) scans JS bundles for leaked credentials, runs on active/deep. Sprint 2 item 6. ⚠️ scanner redeploy required for prod. |
 | Supabase/PostgREST exposed-data check | ✅ Built | `scanners/supabase_exposure.py` — runs on `active`/`deep` scan tiers. `scan_type` previously did nothing; now `jobs/tasks.py` branches scanner selection by tier via `_scanners_for_tier()`. |
 | No SQLi/XSS/rate-limit checks | Medium | SQLmap/DalFox named in CLAUDE.md tool list but `sqli.py`/`xss.py` don't exist. No probe for missing rate limiting on forms/login (10k fake registration / spam vector called out repeatedly in Reddit post). |
 
@@ -379,7 +382,7 @@ apps/scanner/
   reports/grader.py                  ← grade(findings) → (letter, score)
   fly.toml                           ← Fly.io config (web + worker processes)
   Dockerfile                         ← Python 3.12-slim image
-  tests/                             ← 59 tests, all passing
+  tests/                             ← 84 tests, all passing
 
 supabase/
   migrations/                        ← All 19 migrations (applied)
