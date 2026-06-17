@@ -103,6 +103,38 @@ def test_malformed_json_line_is_skipped_others_still_parsed():
     assert findings[0].check_name == "nuclei-tmpl-good"
 
 
+def test_jsonl_line_that_is_a_json_array_is_skipped_others_still_parsed():
+    good_match = {"template-id": "tmpl-good", "info": {"name": "Good", "severity": "low", "description": "d"}, "matched-at": "https://example.com/"}
+    stdout = json.dumps([1, 2, 3]) + "\n" + json.dumps(good_match) + "\n"
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(stdout)):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 1
+    assert findings[0].check_name == "nuclei-tmpl-good"
+
+
+def test_jsonl_line_that_is_a_json_string_is_skipped_others_still_parsed():
+    good_match = {"template-id": "tmpl-good", "info": {"name": "Good", "severity": "low", "description": "d"}, "matched-at": "https://example.com/"}
+    stdout = json.dumps("just a string") + "\n" + json.dumps(good_match) + "\n"
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(stdout)):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 1
+    assert findings[0].check_name == "nuclei-tmpl-good"
+
+
+def test_match_with_non_dict_info_does_not_raise_and_falls_back_to_template_id():
+    match = {"template-id": "weird", "info": "oops", "matched-at": "https://example.com"}
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(_jsonl(match))):
+        findings = NucleiScanner(URL).run()
+
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.check_name == "nuclei-weird"
+    assert f.title == "weird"
+    assert f.severity == "info"
+
+
 def test_binary_not_found_returns_empty_list():
     with patch("scanners.nuclei.subprocess.run", side_effect=FileNotFoundError("nuclei: not found")):
         findings = NucleiScanner(URL).run()

@@ -64,6 +64,8 @@ class NucleiScanner(BaseScanner):
                 match = json.loads(line)
             except ValueError:
                 continue
+            if not isinstance(match, dict):
+                continue
             findings.append(self._finding_from_match(match))
 
         if not findings:
@@ -73,6 +75,8 @@ class NucleiScanner(BaseScanner):
     def _finding_from_match(self, match: dict) -> Finding:
         template_id = match.get("template-id", "unknown-template")
         info = match.get("info", {})
+        if not isinstance(info, dict):
+            info = {}
         matched_at = match.get("matched-at", self.url)
         remediation = info.get("remediation") or (
             "Review this finding against the linked CVE/reference and apply "
