@@ -12,8 +12,10 @@ RUN mkdir -p "$GOBIN"
 # silent "ran clean, zero findings" result instead of a loud build break.
 RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@v3.9.0
 
-# -update-templates pulls into ~/.config/nuclei/templates for the user
-# running the command (root, in this build stage).
+# -update-templates pulls the actual template YAMLs into ~/nuclei-templates
+# (verified against nuclei v3.9.0's .templates-config.json on a real
+# deploy — NOT ~/.config/nuclei, which only holds nuclei's own config/
+# ignore-list files, not the templates themselves).
 RUN "$GOBIN/nuclei" -update-templates
 
 # --- Final stage ---
@@ -34,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # network calls).
 COPY --from=nuclei-build /usr/local/go-bin/nuclei /usr/local/bin/nuclei
 COPY --from=nuclei-build /root/.config/nuclei /root/.config/nuclei
+COPY --from=nuclei-build /root/nuclei-templates /root/nuclei-templates
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
