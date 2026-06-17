@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
 import ReportActionsBar from '@/components/report/ReportActionsBar'
 import FindingsList from '@/components/report/FindingsList'
+import StackUpgradeBlock from '@/components/report/StackUpgradeBlock'
 import ScanPollingView from '@/components/report/ScanPollingView'
 import { createServerClient } from '@/lib/supabase/server'
 import type { FindingRow } from '@/types'
@@ -141,6 +142,8 @@ export default async function ReportPage({ params }: Props) {
                 {typedFindings.length === 0 && <div style={{ color: 'var(--ink-mute)', fontSize: 13 }}>No findings recorded.</div>}
               </div>
             </div>
+
+            <StackUpgradeBlock findings={typedFindings} scanType={scan.scan_type} />
 
             <FindingsList findings={typedFindings} />
           </>

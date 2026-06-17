@@ -29,8 +29,86 @@ class HeadersScanner(BaseScanner):
         findings.extend(self._check_x_frame_options(headers))
         findings.extend(self._check_simple("referrer-policy", "referrer-policy", "Referrer-Policy", "low", headers))
         findings.extend(self._check_simple("permissions-policy", "permissions-policy", "Permissions-Policy", "low", headers))
+        findings.extend(self._check_tech_disclosure(headers))
 
         return findings
+
+    # Headers that reveal the server/framework stack. The value is also the data
+    # source for the report's "Detected Stack" block (Sprint 1, item 4).
+    _DISCLOSURE_HEADERS = ("x-powered-by", "server", "x-fah-adapter", "x-aspnet-version", "x-generator")
+
+    @staticmethod
+    def _infer_tech(header: str, value: str) -> str:
+        """Map a disclosure header value to a friendly technology label."""
+        v = value.lower()
+        if header == "x-fah-adapter" and v.startswith("nextjs"):
+            # e.g. "nextjs-14.0.21" -> "Next.js (14.0.21)"
+            ver = value.split("-", 1)[1] if "-" in value else ""
+            return f"Next.js ({ver})" if ver else "Next.js"
+        if "next.js" in v or "nextjs" in v:
+            return "Next.js"
+        if header == "x-aspnet-version":
+            return f"ASP.NET ({value})"
+        known = {
+            "express": "Express",
+            "nginx": "nginx",
+            "apache": "Apache",
+            "vercel": "Vercel",
+            "cloudflare": "Cloudflare",
+            "netlify": "Netlify",
+            "php": "PHP",
+            "django": "Django",
+            "flask": "Flask",
+        }
+        for key, label in known.items():
+            if key in v:
+                # keep the version suffix where present (e.g. nginx/1.25 -> "nginx (1.25)")
+                if "/" in value and value.lower().startswith(key):
+                    return f"{label} ({value.split('/', 1)[1]})"
+                return label
+        # Unrecognised — surface the raw value so the report still shows something.
+        return value
+
+    def _check_tech_disclosure(self, headers: dict) -> list[Finding]:
+        present = {h: headers[h] for h in self._DISCLOSURE_HEADERS if headers.get(h)}
+
+        if not present:
+            return [Finding(
+                check_name="tech-disclosure",
+                severity="pass",
+                category="headers",
+                title="No tech-stack disclosure in headers",
+                description="The server did not leak framework or server-software details in its response headers.",
+                what_we_did="Checked X-Powered-By, Server, X-Fah-Adapter and similar headers for stack disclosure.",
+                remediation="",
+            )]
+
+        detected: list[str] = []
+        for header, value in present.items():
+            tech = self._infer_tech(header, value)
+            if tech not in detected:
+                detected.append(tech)
+
+        leaked = ", ".join(f"{h}: {v}" for h, v in present.items())
+        return [Finding(
+            check_name="tech-disclosure",
+            severity="low",
+            category="headers",
+            title="Your stack is visible in response headers",
+            description=(
+                f"Your app advertises its technology stack in HTTP headers ({leaked}). "
+                "This is common for AI-generated apps deployed on Vercel/Netlify and isn't "
+                "exploitable on its own, but it hands attackers a free shortcut: knowing you "
+                "run a specific framework/version lets them target known CVEs for it directly."
+            ),
+            what_we_did="Inspected response headers that commonly reveal the server and framework stack.",
+            remediation=(
+                "Strip or override these headers at your edge/CDN. On Next.js set "
+                "`poweredByHeader: false` in next.config.js; on Vercel/nginx remove or rewrite "
+                "the Server and X-Powered-By headers."
+            ),
+            metadata={"detected": detected, "headers": present},
+        )]
 
     def _check_csp(self, headers: dict) -> list[Finding]:
         value = headers.get("content-security-policy")
@@ -40,9 +118,18 @@ class HeadersScanner(BaseScanner):
                 severity="medium",
                 category="headers",
                 title="Content-Security-Policy Missing",
-                description="No Content-Security-Policy header was returned by the server.",
+                description=(
+                    "No Content-Security-Policy header was returned. Most AI-generated apps "
+                    "(Next.js on Vercel, Vite, etc.) ship without one by default — it's not set "
+                    "for you. Without a CSP, a single injected script can run freely in your "
+                    "users' browsers, which is the difference between a bug and a stolen session."
+                ),
                 what_we_did="Checked HTTP response headers for Content-Security-Policy.",
-                remediation="Add a Content-Security-Policy header. Start with \"default-src 'self'\" and refine.",
+                remediation=(
+                    "Add a Content-Security-Policy header. On Next.js set it in `next.config.js` "
+                    "headers() or middleware; start with \"default-src 'self'\" and loosen only "
+                    "what your app actually needs."
+                ),
             )]
         if "'unsafe-inline'" in value or "'unsafe-eval'" in value:
             return [Finding(

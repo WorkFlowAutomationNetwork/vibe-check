@@ -140,6 +140,52 @@ def test_missing_permissions_policy_is_low():
     assert pp_findings[0].severity == "low"
 
 
+def _tech(findings):
+    return [f for f in findings if f.check_name == "tech-disclosure"]
+
+
+def test_no_tech_disclosure_emits_pass():
+    headers = {
+        "content-security-policy": "default-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "camera=()",
+    }
+    td = _tech(run_with_headers(headers))
+    assert len(td) == 1
+    assert td[0].severity == "pass"
+
+
+def test_x_powered_by_is_low_and_detects_framework():
+    headers = {"x-powered-by": "Next.js"}
+    td = _tech(run_with_headers(headers))
+    assert len(td) == 1
+    assert td[0].severity == "low"
+    assert td[0].category == "headers"
+    assert "Next.js" in (td[0].metadata or {}).get("detected", [])
+
+
+def test_server_header_disclosure_is_low():
+    headers = {"server": "nginx/1.25.3"}
+    td = _tech(run_with_headers(headers))
+    assert len(td) == 1
+    assert td[0].severity == "low"
+    assert any("nginx" in d.lower() for d in (td[0].metadata or {}).get("detected", []))
+
+
+def test_x_fah_adapter_detects_nextjs_version():
+    headers = {"x-fah-adapter": "nextjs-14.0.21"}
+    td = _tech(run_with_headers(headers))
+    assert len(td) == 1
+    assert td[0].severity == "low"
+    detected = (td[0].metadata or {}).get("detected", [])
+    assert any("Next.js" in d for d in detected)
+    # the raw header/value should be captured for the report's Detected Stack block
+    assert "x-fah-adapter" in (td[0].metadata or {}).get("headers", {})
+
+
 def test_connection_error_returns_critical_finding():
     with respx.mock:
         respx.get(BASE_URL).mock(side_effect=httpx.ConnectError("refused"))

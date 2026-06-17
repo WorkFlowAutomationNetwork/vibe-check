@@ -4,7 +4,9 @@
 
 *Last updated: 2026-06-16 — scan-tier branching + Supabase exposure scanner merged · admin profile RLS hole closed · admin user-detail 500 fixed (illegal RSC event handler) · `scans.type`→`scan_type` bug fixed · sign-out added app-wide · product roadmap re-prioritized after report/scanner critique (Sprint 1: reporting reframe + stack detection; Sprint 2: secrets + storage scanners; IDOR/multi-tenant/prompt-injection deprioritized)*
 
-*2026-06-17 — security review remediation (branch `security-fixes-rls-redirect`): **A1** findings column-leak to anon closed via `public_findings` view + dropped broad anon policy (migration 18, APPLIED to remote); **A2** table-wide anon `badges` policy dropped (migration 18, APPLIED); **A3** auth-callback `next` open-redirect validated to same-origin; **A4** Stripe webhook now links via `client_reference_id` not the non-existent `profiles.email` column (was a dead no-op); **A5** Finding security invariant documented + regression test that row contents never leak into findings; **C5** admin password-reset now actually sends (was `generateLink` no-op → `resetPasswordForEmail`); **B3** `/trust` page shipped with scanner egress IPs; **legal layer** `/terms` + `/privacy` drafted (LAWYER-REVIEW placeholders) + sign-up Terms/Privacy acceptance gate + onboard "I am authorised" acknowledgement (D7). GitGuardian "service-role JWT" alert = FALSE POSITIVE on a test fixture (no real key leaked); fixture rebuilt at runtime so it stops flagging. Migrations 18 + 19 both APPLIED to remote. **Still open (operational, not code):** C3 retention purge job + account-deletion cascade verification; C2 sub-processor DPAs; lawyer review of `/terms` + `/privacy` before paid launch. See `Security-feedback.md` for the per-item status.*
+*2026-06-17 — security review remediation (branch `security-fixes-rls-redirect`): **A1** findings column-leak to anon closed via `public_findings` view + dropped broad anon policy (migration 18, APPLIED to remote); **A2** table-wide anon `badges` policy dropped (migration 18, APPLIED); **A3** auth-callback `next` open-redirect validated to same-origin; **A4** Stripe webhook now links via `client_reference_id` not the non-existent `profiles.email` column (was a dead no-op); **A5** Finding security invariant documented + regression test that row contents never leak into findings; **C5** admin password-reset now actually sends (was `generateLink` no-op → `resetPasswordForEmail`); **B3** `/trust` page shipped with scanner egress IPs; **legal layer** `/terms` + `/privacy` drafted (LAWYER-REVIEW placeholders) + sign-up Terms/Privacy acceptance gate + onboard "I am authorised" acknowledgement (D7). GitGuardian "service-role JWT" alert = FALSE POSITIVE on a test fixture (no real key leaked); fixture rebuilt at runtime so it stops flagging. Migrations 18 + 19 both APPLIED to remote. **Still open (operational, not code):** C3 retention purge job + account-deletion cascade verification; C2 sub-processor DPAs; lawyer review of `/terms` + `/privacy` before paid launch. See `Security-feedback.md` for the per-item status. — Merged to master + pushed.*
+
+*2026-06-17 (later) — **Sprint 1 finished**: tech/stack-disclosure scanner check (`headers.py::_check_tech_disclosure`, +4 tests, resolves Known Issue #2); `Finding` gains optional `metadata`; report "Issues / What's working" split (positive findings); `StackUpgradeBlock` ("Detected stack" + "Active scans available/included") on `/report/[scanId]`; copy reframe on tech-disclosure + missing-CSP findings. Scanner suite 59/59 green; web build clean. ⚠️ **Scanner needs redeploy to Fly.io** for the new header check to run in prod.*
 
 ---
 
@@ -15,10 +17,9 @@
 **Root cause:** sslyze emits a `CryptographyDeprecationWarning` about a malformed serial number in a trust store root cert. This causes `verified_certificate_chain[0]` access to fail silently inside `except Exception: pass`, so the `cert-expiry` finding is never written.  
 **Fix:** Fall back to `received_certificate_chain` when `verified_certificate_chain` is empty/raises, or suppress the deprecation warning before the sslyze call.
 
-### 2. Tech stack disclosure not checked by scanner
+### 2. Tech stack disclosure not checked by scanner — ✅ RESOLVED (2026-06-17)
 **File:** `apps/scanner/scanners/headers.py`  
-**Root cause:** No check for `x-powered-by`, `server`, or `x-fah-adapter` headers that expose the tech stack. Confirmed present in chorusproject.io responses (`x-powered-by: Next.js`, `x-fah-adapter: nextjs-14.0.21`).  
-**Fix:** Add `_check_tech_disclosure()` method in `headers.py` that flags these headers as `low` severity findings with category `headers`.
+`_check_tech_disclosure()` added: checks `x-powered-by`, `server`, `x-fah-adapter`, `x-aspnet-version`, `x-generator`; emits a `low` finding (or a `pass` when clean) and captures detected technologies in `Finding.metadata.detected` — the data source for the report's "Detected stack" block. ⚠️ **Scanner needs redeploy to Fly.io for this to take effect in production.**
 
 ---
 
@@ -86,7 +87,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 |---|---|---|
 | Next.js (apps/web) | ✅ Running | Next.js 14, App Router, TypeScript strict. Build passing. |
 | Supabase (remote) | ✅ Live | Project ID: `lvkiflbpbtmlrgdftivt`. All 19 migrations applied. |
-| Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 40 tests. |
+| Scanner (apps/scanner) | ✅ Deployed | `https://vibe-check-scanner.fly.dev` — health check confirmed live. FastAPI + Celery + Redis. 59 tests. |
 | Redis (Fly.io) | ✅ Deployed | Fly.io managed Redis (Upstash). Connected to scanner. `vibe-check-redis` instance. |
 | Stripe | ⚠️ Client configured | `lib/stripe/client.ts` exists. No products created in Stripe dashboard yet. |
 | Resend (email) | ⚠️ Key needed | Referenced in `.env.example`. Not wired to any send calls yet. |
@@ -222,7 +223,8 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | AppShell | `components/shared/AppShell.tsx` | ✅ | `'use client'` — fetches user/isAdmin/plan via browser Supabase client on mount. |
 | AdminShell | `components/admin/AdminShell.tsx` | ✅ | Sidebar nav for all /admin routes. |
 | ReportActionsBar | `components/report/ReportActionsBar.tsx` | ✅ | `'use client'` — Share, Download PDF, Re-scan buttons. |
-| FindingsList | `components/report/FindingsList.tsx` | ✅ | `'use client'` — expand/collapse findings, severity sort, "expand all". |
+| FindingsList | `components/report/FindingsList.tsx` | ✅ | `'use client'` — splits into "Issues (n)" + "What's working (n)"; expand/collapse, severity sort, "expand all". |
+| StackUpgradeBlock | `components/report/StackUpgradeBlock.tsx` | ✅ | Server component — "Detected stack" (from `metadata.detected`) + "Active scans available/included" (static catalogue). Upgrade CTA on passive/free scans. |
 | ScanPollingView | `components/report/ScanPollingView.tsx` | ✅ | `'use client'` — polls `/api/scans?id=`, redirects on complete. |
 | OnboardFlow | `components/onboard/OnboardFlow.tsx` | ✅ | `'use client'` — full 4-step state machine for URL add + verify + scan. |
 | BadgeClient | `components/badge/BadgeClient.tsx` | ✅ | `'use client'` — copy state for badge embed codes. Empty state if no badge. |
@@ -244,7 +246,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | POST /api/scans endpoint | ✅ | Receives from web app, enqueues Celery task |
 | Celery + Redis queue | ✅ | `jobs/config.py`, `jobs/worker.py`. 3 retries, exponential backoff |
 | `consent.verify()` | ✅ | Runs before every scan. Raises `ConsentError` if URL not verified. |
-| `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy |
+| `HeadersScanner` | ✅ | Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy + **tech-stack disclosure** (`_check_tech_disclosure`: x-powered-by/server/x-fah-adapter/…, detected stack in `metadata`) |
 | `TLSScanner` | ✅ | Cert expiry, TLS version (1.0/1.1 = high, 1.2 pass, 1.3 pass) via sslyze |
 | `SupabaseExposureScanner` | ✅ | Detects Supabase tables readable via the site's own public anon key (missing RLS) — the CVE-2025-48757 pattern. Runs on `active`/`deep` tiers only. |
 | Scan-tier branching | ✅ | `jobs/tasks.py::_scanners_for_tier()` — `passive` = headers+TLS, `active`/`deep` = passive + Supabase exposure check. `deep` has no additional scanners yet. |
@@ -252,7 +254,7 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 | `run_scan` task | ✅ | Orchestrates consent → scanners → findings insert → grade → status update |
 | Dockerfile | ✅ | Python 3.12-slim. Ready to build. |
 | fly.toml | ✅ | Two processes: web (uvicorn) + worker (celery). Sydney region. 512MB RAM. |
-| Tests | ✅ | 54/54 passing |
+| Tests | ✅ | 59/59 passing |
 | Nuclei, SQLmap, DalFox | ❌ | Step 2 — not in scope yet |
 | PDF generation | ❌ | Step 2 — `reports/renderer.py` not yet implemented |
 
@@ -315,12 +317,12 @@ All Next.js pages are built and **wired to real Supabase data** — no hardcoded
 > - Generic IDOR / multi-tenant-leakage / auth-bypass scanners are **deprioritized indefinitely** — these require authenticated test credentials per target app, which is a different product (pentest-style), not a generic scanner. Revisit only if/when there's a plan for users to safely hand over test credentials.
 > - Rate-limit probing must stay lightweight (5-10 requests, not "unlimited") and paid-tier only — anything more risks being read as abusive traffic against a third party's production site.
 
-### Sprint 1 — Reporting & free-tier value (no new scanners, mostly templating)
-1. **Reporting reframe** — Replace flat severity counts with Critical/High/Medium/Configuration-Improvement buckets. Each finding gets What it is / What we checked / Impact / Fix sections.
-2. **Positive findings section** — Surface passing checks (✓ TLS 1.3, ✓ SSL cert valid, ✓ no secrets found) instead of an all-negative report.
-3. **Tech/stack disclosure check** — Closes existing Known Issue #2 above: add `_check_tech_disclosure()` to `headers.py`, checking `x-powered-by`/`server`/`x-fah-adapter` etc. This is the data source for stack detection, not a new scanner.
-4. **"Detected Stack" + "Active Scans Available" block on free report** — Uses the tech-disclosure data plus a static category list (Database Exposure, Secrets Exposure, Authentication Review) to show what upgrading unlocks, without running those scans.
-5. **Copy pass** — Reframe findings in Supabase/Next.js/Vercel/Cursor-ecosystem terms where applicable (e.g. "Common AI-App Risk: your app uses Supabase — many AI-generated apps accidentally expose customer data via misconfigured RLS").
+### Sprint 1 — Reporting & free-tier value — ✅ DONE (2026-06-17, except noted)
+1. ✅ **Reporting reframe** — Critical/Medium/pass buckets + grade card with verdict. *(landed in d010aab)*
+2. ✅ **Positive findings section** — `FindingsList` now splits into "Issues (n)" and "What's working (n)"; passing checks framed as positives.
+3. ✅ **Tech/stack disclosure check** — `_check_tech_disclosure()` in `headers.py` (+4 tests). Resolves Known Issue #2. ⚠️ scanner redeploy required.
+4. ✅ **"Detected Stack" + "Active Scans Available" block** — `components/report/StackUpgradeBlock.tsx`, rendered on `/report/[scanId]`. Reads `metadata.detected`; shows upgrade CTA on passive/free scans, "included" on active/deep.
+5. 🟡 **Copy pass** — New surfaces (tech-disclosure finding, StackUpgradeBlock) + the missing-CSP finding reframed in Supabase/Next.js/Vercel terms. Remaining generic header/TLS finding copy not yet reframed — small follow-up.
 
 ### Sprint 2 — New scanners (paid tiers)
 6. **Secrets scanner** — `scanners/secrets.py`, scans JS bundles loaded by the page for OpenAI/Stripe/AWS/Supabase-service-key/Firebase credential patterns. Flag `critical`/`high` in the `secrets` category. Highest-value new scanner — pair with Supabase exposure as the flagship "we find what vibe-coding tools leak" pitch.
@@ -377,7 +379,7 @@ apps/scanner/
   reports/grader.py                  ← grade(findings) → (letter, score)
   fly.toml                           ← Fly.io config (web + worker processes)
   Dockerfile                         ← Python 3.12-slim image
-  tests/                             ← 40 tests, all passing
+  tests/                             ← 59 tests, all passing
 
 supabase/
   migrations/                        ← All 19 migrations (applied)
