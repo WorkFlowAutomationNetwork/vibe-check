@@ -1,6 +1,12 @@
 # --- Build stage: compile nuclei and pull its template library ---
 FROM golang:1.25-bookworm AS nuclei-build
 
+# Explicit GOBIN avoids relying on GOPATH/bin default location, which can
+# vary (e.g. gets an arch-specific subdirectory under some cross-compile
+# configurations) — pin the install destination so the later COPY is exact.
+ENV GOBIN=/usr/local/go-bin
+RUN mkdir -p "$GOBIN"
+
 # Pinned, not @latest: an unpinned version could silently change CLI flags
 # on a redeploy unrelated to this scanner, degrading NucleiScanner to a
 # silent "ran clean, zero findings" result instead of a loud build break.
@@ -8,7 +14,7 @@ RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@v3.9.0
 
 # -update-templates pulls into ~/.config/nuclei/templates for the user
 # running the command (root, in this build stage).
-RUN /root/go/bin/nuclei -update-templates
+RUN "$GOBIN/nuclei" -update-templates
 
 # --- Final stage ---
 FROM python:3.12-slim
@@ -26,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # docs/superpowers/specs/2026-06-17-nuclei-deep-tier-scanner-design.md —
 # template freshness is intentionally tied to redeploys, not runtime
 # network calls).
-COPY --from=nuclei-build /root/go/bin/nuclei /usr/local/bin/nuclei
+COPY --from=nuclei-build /usr/local/go-bin/nuclei /usr/local/bin/nuclei
 COPY --from=nuclei-build /root/.config/nuclei /root/.config/nuclei
 
 COPY requirements.txt .
