@@ -101,3 +101,25 @@ def test_malformed_json_line_is_skipped_others_still_parsed():
 
     assert len(findings) == 1
     assert findings[0].check_name == "nuclei-tmpl-good"
+
+
+def test_binary_not_found_returns_empty_list():
+    with patch("scanners.nuclei.subprocess.run", side_effect=FileNotFoundError("nuclei: not found")):
+        findings = NucleiScanner(URL).run()
+    assert findings == []
+
+
+def test_timeout_returns_empty_list():
+    with patch("scanners.nuclei.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="nuclei", timeout=120)):
+        findings = NucleiScanner(URL).run()
+    assert findings == []
+
+
+def test_nonzero_exit_with_no_stdout_returns_empty_pass_set_not_crash():
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process("", returncode=1)):
+        findings = NucleiScanner(URL).run()
+    # Nuclei exiting non-zero with no output is treated the same as "ran clean,
+    # no matches" — there's no reliable signal here that distinguishes a real
+    # failure from "exited 1 with nothing to report", so we don't raise either way.
+    assert len(findings) == 1
+    assert findings[0].severity == "pass"
