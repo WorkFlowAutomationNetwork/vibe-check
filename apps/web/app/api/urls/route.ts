@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/activity'
 
 const CreateUrlSchema = z.object({
   url: z.string().url(),
@@ -90,6 +91,13 @@ export async function POST(request: Request) {
   if (insertError || !urlRow) {
     return NextResponse.json({ error: 'Failed to create URL' }, { status: 500 })
   }
+
+  await logActivity({
+    userId: user.id,
+    eventType: 'url_added',
+    urlId: urlRow.id,
+    payload: { url: normalized },
+  })
 
   return NextResponse.json(urlRow, { status: 201 })
 }

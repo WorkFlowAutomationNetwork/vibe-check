@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { promises as dns } from 'dns'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/activity'
 
 const VerifySchema = z.object({
   url_id: z.string().uuid(),
@@ -94,6 +95,13 @@ export async function POST(request: Request) {
         verified_at: new Date().toISOString(),
       })
       .eq('id', urlRow.id)
+
+    await logActivity({
+      userId: user.id,
+      eventType: 'url_verified',
+      urlId: urlRow.id,
+      payload: { url: urlRow.url, method },
+    })
   }
 
   return NextResponse.json({ verified })
