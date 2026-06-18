@@ -152,10 +152,12 @@ short human string. Event types must match the feed's `EVENT_DISPLAY` map:
 
 ### Web
 
-- Unit test for `logActivity` (mock service client; asserts insert payload; swallows error).
-- Route-level writes for `url_added` / `url_verified` verified against the existing
-  `apps/web` test harness **if one exists** — confirm `apps/web` test setup before
-  committing to route-level tests; otherwise verify manually and note it.
+`apps/web` has **no test harness** (no jest/vitest, no `test` script, no test files —
+confirmed 2026-06-18). Setting one up is out of scope for this work. Therefore:
+
+- `logActivity` is kept small and defensive (best-effort, swallows errors).
+- Web changes verified by `npm run type-check` (clean) + manual end-to-end:
+  `url_added` and `url_verified` appear in the `/activity` feed after adding/verifying a URL.
 
 ---
 
@@ -169,7 +171,6 @@ EDIT apps/scanner/jobs/tasks.py
 EDIT apps/web/app/api/urls/route.ts
 EDIT apps/web/app/api/verify/route.ts
 NEW  apps/scanner/tests/…            (badge + activity + tasks tests)
-NEW  apps/web/…                      (logActivity test, harness permitting)
 ```
 
 No migrations. No new env vars.
