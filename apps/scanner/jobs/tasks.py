@@ -116,11 +116,16 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
                            "detail": f"Grade {letter} · {scan_type} scan"})
 
         if scan_type in _BADGE_TIERS:
-            badge = issue_badge(url_id, scan_id)
-            log_event(user_id, "badge_issued", url_id=url_id, scan_id=scan_id,
-                      payload={"url": url, "grade": letter,
-                               "expires_at": badge["expires_at"],
-                               "detail": f"Valid until {_format_date(badge['expires_at'])}"})
+            # Best-effort, like PDF rendering above: a badge write failure must
+            # not undo an already-completed scan or trigger a full re-scan.
+            try:
+                badge = issue_badge(url_id, scan_id)
+                log_event(user_id, "badge_issued", url_id=url_id, scan_id=scan_id,
+                          payload={"url": url, "grade": letter,
+                                   "expires_at": badge["expires_at"],
+                                   "detail": f"Valid until {_format_date(badge['expires_at'])}"})
+            except Exception:
+                pass
 
     except Exception as exc:
         _mark_scan(scan_id, status="failed", completed_at=_now())

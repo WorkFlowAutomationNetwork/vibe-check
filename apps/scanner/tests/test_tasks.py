@@ -246,3 +246,23 @@ def test_scan_failed_event_only_on_final_retry(mock_sb, mock_consent_ok):
         with pytest.raises(RuntimeError):
             _execute_scan(FakeSelf(retries=3), "scan-1", "url-1", "passive", "user-1")
         assert "scan_failed" in [c.args[1] for c in mle.call_args_list]
+
+
+def test_badge_failure_does_not_fail_completed_scan(mock_sb, mock_consent_ok):
+    with patch("jobs.tasks.HeadersScanner") as mh, \
+         patch("jobs.tasks.TLSScanner") as mt, \
+         patch("jobs.tasks.SupabaseExposureScanner") as ms, \
+         patch("jobs.tasks.StorageExposureScanner") as mse, \
+         patch("jobs.tasks.SecretsScanner") as msec, \
+         patch("jobs.tasks.RateLimitScanner") as mrl, \
+         patch("jobs.tasks.issue_badge", side_effect=RuntimeError("badge db down")), \
+         patch("jobs.tasks.log_event") as mle:
+        for m in (mh, mt, ms, mse, msec, mrl):
+            m.return_value.run.return_value = []
+        from jobs.tasks import _execute_scan
+        _execute_scan(FakeSelf(), "scan-1", "url-1", "active", "user-1")  # must not raise
+
+    statuses = [c[0][0].get("status") for c in mock_sb.table.return_value.update.call_args_list]
+    assert "completed" in statuses
+    assert "failed" not in statuses
+    assert "badge_issued" not in [c.args[1] for c in mle.call_args_list]
