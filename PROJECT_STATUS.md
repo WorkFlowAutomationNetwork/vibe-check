@@ -14,7 +14,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 
 ## Current phase
 
-> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. **Blocking launch:** lawyer review of `/terms` + `/privacy`; badge issuance + activity-log writes not yet built (both dashboard features are currently dead); homepage overstates capabilities (see mismatches below).
+> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. Badge issuance + activity-log writes now built (scanner issues 30-day badges on active/deep completion; scanner + web write the activity feed) — **pending a scanner redeploy to go live.** **Blocking launch:** lawyer review of `/terms` + `/privacy`; homepage overstates capabilities (see mismatches below).
 
 ---
 
@@ -71,7 +71,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 `grader.py` (A–F), `renderer.py`+`storage.py` (PDF → `reports` bucket on every scan). `consent.verify()` runs before any scanner — non-negotiable.
 
-**Not yet written in scanner:** `badges` row creation and `activity_log` writes on scan completion (both confirmed absent in `jobs/tasks.py`). See gaps.
+**Badge + activity writes (built 2026-06-18):** `jobs/tasks.py` now writes `activity_log` events (`scan_started`/`scan_completed`/`scan_failed`) and, on `active`/`deep` completion, issues a 30-day `badges` row via `lib/badges.py::issue_badge` (lapses the prior active badge first) + a `badge_issued` event. Helpers: `lib/activity.py::log_event`, `lib/badges.py::issue_badge`. Web side writes `url_added`/`url_verified` via `apps/web/lib/activity.ts`. **Not yet redeployed to Fly.io** — live once the scanner image is rebuilt.
 
 ---
 
@@ -94,7 +94,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 ## Gaps / What to build next (priority order)
 
-1. **Badge issuance + activity-log writes (scanner).** `jobs/tasks.py` must create a `badges` row (active scans) and write `activity_log` events on scan start/complete/fail. **Until this ships, the badge page, `/api/badge/[token]`, dashboard badge chips, and the entire activity feed are permanently empty** — these are wired UIs with no data source. High priority: it makes built features actually work.
+1. **Scanner redeploy** to ship the badge + activity-log writes built 2026-06-18 (branch `feat/badge-activity-writes`). Code + tests are done and green locally (153/153); the Fly.io image needs rebuilding for the badge page / activity feed to populate in production.
 2. **`DELETE /api/urls/[id]` + dashboard remove button.** Product requirement: a user who hasn't completed a scan should be able to remove a URL (don't lock them out after a typo); hide the option once a scan exists. Not built.
 3. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
 4. **Live Stripe products + keys.**
@@ -118,7 +118,7 @@ The landing page and billing comparison table advertise features the scanner **d
 | **Prompt injection** — "~40 known jailbreaks" (check card) | No prompt-injection scanner exists. Deprioritized indefinitely. |
 | **Auth & access control / IDOR** (check card + billing "active probes (auth, prompt injection, IDOR)") | No auth/IDOR scanner. Deprioritized. |
 | **Dependency CVEs** — "cross-check your bundle against the live CVE feed (npm, pypi, cargo)" | No dependency/bundle CVE scanner. Nuclei carries some CVE templates but does not do manifest CVE matching. |
-| **Badge** "valid 30 days", "stays active automatically", `180/180` | Badge issuance not built (gap #1). No badge is ever created. |
+| **Badge** "valid 30 days", "stays active automatically", `180/180` | Badge issuance now built (30-day expiry matches "valid 30 days"). "Stays active automatically" still aspirational — there is no auto-renewal/monitoring cron; re-scan renews. `180/180` is invented. |
 | Pricing "$9 / scan … **1 URL, expires after scan**" | Starter is a persistent unlock (passive+active), not single-use and does not expire. Copy contradicts implementation. |
 | Badge snippet `vibe-check.dev/b.js`, integrations `app.vibe-check.dev/hooks/…` | Domains/badge script not real. |
 

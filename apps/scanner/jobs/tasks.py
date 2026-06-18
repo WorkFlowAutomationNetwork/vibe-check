@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
 from lib import consent
+from lib.activity import log_event
+from lib.badges import issue_badge
 from lib.settings import settings
 from lib.storage import upload_report_pdf
 from lib.supabase import get_supabase
@@ -18,6 +20,16 @@ from jobs.config import celery_app
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+_BADGE_TIERS = {"active", "deep"}
+
+
+def _format_date(iso: str) -> str:
+    """'2026-07-18T…' -> 'Jul 18, 2026'. Avoids strftime('%-d'), which is not
+    portable to Windows where the test suite runs."""
+    dt = datetime.fromisoformat(iso)
+    return f"{dt.strftime('%b')} {dt.day}, {dt.year}"
 
 
 def _mark_scan(scan_id: str, **fields) -> None:
@@ -53,7 +65,14 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
         url = consent.verify(url_id)
     except consent.ConsentError:
         _mark_scan(scan_id, status="failed", completed_at=_now())
+        log_event(user_id, "scan_failed", url_id=url_id, scan_id=scan_id,
+                  payload={"detail": "ownership verification failed"})
         raise  # Do not retry consent errors
+
+    # First attempt only — avoid duplicate feed entries when Celery retries.
+    if task_self.request.retries == 0:
+        log_event(user_id, "scan_started", url_id=url_id, scan_id=scan_id,
+                  payload={"url": url, "detail": f"{scan_type} scan"})
 
     try:
         findings = [
@@ -92,8 +111,27 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
             pdf_storage_path=pdf_storage_path,
         )
 
+        log_event(user_id, "scan_completed", url_id=url_id, scan_id=scan_id,
+                  payload={"url": url, "grade": letter, "score": score,
+                           "detail": f"Grade {letter} · {scan_type} scan"})
+
+        if scan_type in _BADGE_TIERS:
+            # Best-effort, like PDF rendering above: a badge write failure must
+            # not undo an already-completed scan or trigger a full re-scan.
+            try:
+                badge = issue_badge(url_id, scan_id)
+                log_event(user_id, "badge_issued", url_id=url_id, scan_id=scan_id,
+                          payload={"url": url, "grade": letter,
+                                   "expires_at": badge["expires_at"],
+                                   "detail": f"Valid until {_format_date(badge['expires_at'])}"})
+            except Exception:
+                pass
+
     except Exception as exc:
         _mark_scan(scan_id, status="failed", completed_at=_now())
+        if task_self.request.retries >= task_self.max_retries:
+            log_event(user_id, "scan_failed", url_id=url_id, scan_id=scan_id,
+                      payload={"url": url, "detail": "scan error"})
         raise task_self.retry(exc=exc)
 
 
