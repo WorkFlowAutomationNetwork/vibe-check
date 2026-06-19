@@ -10,4 +10,6 @@
 - decide on api intergration? 
 - test all authentication methods - ie dns, adding file, adding code to ensure they all work on at least 3 sites 
 - review all auto emails for things like formatting ect with custom domain names 
-- 
+- documentation/how to guide
+- make decisions re making an API - decide if this can be a ship after solution as an update
+- decisions around roadmaps?
