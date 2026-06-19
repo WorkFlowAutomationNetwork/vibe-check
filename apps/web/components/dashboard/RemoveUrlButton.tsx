@@ -19,10 +19,14 @@ export default function RemoveUrlButton({ urlId, urlLabel }: { urlId: string; ur
         return
       }
       const data = await res.json().catch(() => ({}))
-      setError(data?.error === 'url_has_scans' ? 'has scans' : 'failed')
+      setError(
+        data?.error === 'url_has_scans'
+          ? "Can't remove — this URL has a scan"
+          : "Couldn't remove — try again",
+      )
       setLoading(false)
     } catch {
-      setError('failed')
+      setError("Couldn't remove — try again")
       setLoading(false)
     }
   }
@@ -43,7 +47,7 @@ export default function RemoveUrlButton({ urlId, urlLabel }: { urlId: string; ur
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)' }}>
-        {error ? `Couldn't remove (${error})` : 'Remove?'}
+        {error ?? 'Remove?'}
       </span>
       <button type="button" className="btn-mini" onClick={handleRemove} disabled={loading}>
         {loading ? '…' : '✓ yes'}
