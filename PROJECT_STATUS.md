@@ -14,7 +14,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 
 ## Current phase
 
-> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. Badge issuance + activity-log writes now built (scanner issues 30-day badges on active/deep completion; scanner + web write the activity feed) — **pending a scanner redeploy to go live.** **Blocking launch:** lawyer review of `/terms` + `/privacy`; homepage overstates capabilities (see mismatches below).
+> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. Badge issuance + activity-log writes are **live in production** (scanner issues 30-day badges on active/deep completion; scanner + web write the activity feed — Fly.io redeploy shipped 2026-06-18). **Blocking launch:** lawyer review of `/terms` + `/privacy`; homepage overstates capabilities (see mismatches below).
 
 ---
 
@@ -71,7 +71,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 `grader.py` (A–F), `renderer.py`+`storage.py` (PDF → `reports` bucket on every scan). `consent.verify()` runs before any scanner — non-negotiable.
 
-**Badge + activity writes (built 2026-06-18):** `jobs/tasks.py` now writes `activity_log` events (`scan_started`/`scan_completed`/`scan_failed`) and, on `active`/`deep` completion, issues a 30-day `badges` row via `lib/badges.py::issue_badge` (lapses the prior active badge first) + a `badge_issued` event. Helpers: `lib/activity.py::log_event`, `lib/badges.py::issue_badge`. Web side writes `url_added`/`url_verified` via `apps/web/lib/activity.ts`. **Not yet redeployed to Fly.io** — live once the scanner image is rebuilt.
+**Badge + activity writes (built 2026-06-18, live in prod):** `jobs/tasks.py` writes `activity_log` events (`scan_started`/`scan_completed`/`scan_failed`) and, on `active`/`deep` completion, issues a 30-day `badges` row via `lib/badges.py::issue_badge` (lapses the prior active badge first) + a `badge_issued` event. Helpers: `lib/activity.py::log_event`, `lib/badges.py::issue_badge`. Web side writes `url_added`/`url_verified` via `apps/web/lib/activity.ts`. Fly.io redeploy shipped 2026-06-18.
 
 ---
 
@@ -94,14 +94,13 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 ## Gaps / What to build next (priority order)
 
-1. **Scanner redeploy** to ship the badge + activity-log writes built 2026-06-18 (branch `feat/badge-activity-writes`). Code + tests are done and green locally (153/153); the Fly.io image needs rebuilding for the badge page / activity feed to populate in production.
-2. **`DELETE /api/urls/[id]` + dashboard remove button.** Product requirement: a user who hasn't completed a scan should be able to remove a URL (don't lock them out after a typo); hide the option once a scan exists. Not built.
-3. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
-4. **Live Stripe products + keys.**
-5. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads), Vercel/Netlify deploy webhooks, Slack alerts. Page is currently a mock.
-6. **Resend emails** — welcome, scan-complete, CVE alert.
-7. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
-8. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
+1. **`DELETE /api/urls/[id]` + dashboard remove button.** Product requirement: a user who hasn't completed a scan should be able to remove a URL (don't lock them out after a typo); hide the option once a scan exists. Not built.
+2. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
+3. **Live Stripe products + keys.**
+4. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads), Vercel/Netlify deploy webhooks, Slack alerts. Page is currently a mock.
+5. **Resend emails** — welcome, scan-complete, CVE alert.
+6. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
+7. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
 
 **Deprioritized indefinitely** (need authenticated/app-specific context a generic scanner can't safely infer): prompt-injection testing, generic IDOR, multi-tenant leakage, auth-bypass. SQLmap/DalFox SQLi/XSS — separate future specs, not started.
 
