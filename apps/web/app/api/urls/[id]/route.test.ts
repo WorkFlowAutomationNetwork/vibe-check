@@ -9,6 +9,8 @@ let urlSelectResult: { data: unknown } = { data: null }
 let scanCountResult: { count: number } = { count: 0 }
 let deleteResult: { error: unknown } = { error: null }
 const deleteEq = vi.fn()
+const selectEq = vi.fn()
+const selectIs = vi.fn()
 
 function makeClient() {
   return {
@@ -18,13 +20,22 @@ function makeClient() {
         return {
           // SELECT chain: .select().eq().eq().is().maybeSingle()
           select: () => ({
-            eq: () => ({
-              eq: () => ({
-                is: () => ({
-                  maybeSingle: async () => urlSelectResult,
-                }),
-              }),
-            }),
+            eq: (...args1: unknown[]) => {
+              selectEq(...args1)
+              return {
+                eq: (...args2: unknown[]) => {
+                  selectEq(...args2)
+                  return {
+                    is: (...args3: unknown[]) => {
+                      selectIs(...args3)
+                      return {
+                        maybeSingle: async () => urlSelectResult,
+                      }
+                    },
+                  }
+                },
+              }
+            },
           }),
           // DELETE chain: .delete().eq().eq()
           delete: () => ({
@@ -106,6 +117,9 @@ describe('DELETE /api/urls/[id]', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ ok: true })
     expect(deleteEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(selectEq).toHaveBeenCalledWith('id', 'url-1')
+    expect(selectEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(selectIs).toHaveBeenCalledWith('deleted_at', null)
     expect(logActivity).toHaveBeenCalledWith({
       userId: 'user-1',
       eventType: 'url_removed',
