@@ -114,19 +114,46 @@ changes the response.
 ## Testing
 
 `apps/web` has **no JS test harness today** (no `test` script, no test files; the
-`npm test` in CLAUDE.md is aspirational). Two options:
+`npm test` in CLAUDE.md is aspirational). We are **not** shortcutting this: this
+feature stands up the harness properly and is the first route covered by it.
 
-- **(A) Verification without a new harness (recommended for this small change):**
-  `npm run type-check` + `npm run build` must pass, then a manual dashboard flow:
-  add a URL → remove button appears → remove → URL gone + `url_removed` in activity;
-  add a URL → run a scan → remove button absent; confirm DELETE on a scanned URL
-  returns 409 (via devtools).
-- **(B) Stand up `vitest` + a route unit test** covering the four paths (401 / 404 /
-  409-has-scans / 200). More durable but adds test infrastructure that doesn't exist
-  yet — a larger decision than this feature.
+### Stand up the harness
 
-Recommendation: ship with (A); track (B) as a separate "add web test harness" task so
-it's a deliberate choice rather than a side effect of this PR.
+- Add `vitest` + `@vitest/coverage-v8` as devDependencies in `apps/web`.
+- `vitest.config.ts` with `environment: 'node'`, `globals: true`, and a path alias for
+  `@/` matching `tsconfig.json` so route imports resolve.
+- `package.json` scripts: `"test": "vitest run"`, `"test:watch": "vitest"`.
+- This makes the `npm test` referenced in CLAUDE.md/PROJECT_STATUS real.
+
+### Route tests — `apps/web/app/api/urls/[id]/route.test.ts`
+
+The route depends on `createServerClient` (user-scoped) and `logActivity`. Tests mock
+the Supabase client module (`@/lib/supabase/server`) and `@/lib/activity` with
+`vi.mock`, returning a chainable query-builder stub so each path is exercised against a
+controlled response. Cover all five outcomes:
+
+1. **401** — `getUser()` returns no user.
+2. **404** — URL row not found / not owned (`maybeSingle` → null).
+3. **409** — scan count `> 0`.
+4. **200** — owned URL, zero scans → `delete` called with `id` + `user_id`,
+   `logActivity` invoked with `eventType: 'url_removed'` and no `url_id`.
+5. **500** — `delete` returns an error.
+
+Assert on the returned status code and JSON body, and (for 200) that `delete()` and
+`logActivity` were called with the expected arguments.
+
+### Plus, before claiming done (verification-before-completion)
+
+`npm run type-check`, `npm run build`, and `npm test` all green, then a manual
+dashboard flow: add URL → remove button appears → remove → URL gone + `url_removed` in
+activity; add URL → run a scan → remove button absent.
+
+### Tracked separately (added to the list, not skipped)
+
+Backfilling vitest coverage for the **other existing untested routes** (`urls` POST,
+`scans`, `verify`, `billing/*`, `webhooks`, `badge/[token]`, `admin/*`) is a real,
+larger effort. It is added to `PROJECT_STATUS.md` → Gaps as its own task. This PR
+establishes the harness; the backfill is deliberate follow-up work, not a side effect.
 
 ## Out of scope
 

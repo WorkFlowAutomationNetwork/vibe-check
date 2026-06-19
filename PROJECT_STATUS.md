@@ -101,6 +101,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 5. **Resend emails** — welcome, scan-complete, CVE alert.
 6. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
 7. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
+8. **Backfill web test coverage.** `apps/web` gained a `vitest` harness with the DELETE-url feature (2026-06-19) — its first covered route. The other existing routes (`urls` POST, `scans`, `verify`, `billing/*`, `webhooks`, `badge/[token]`, `admin/*`) still have no tests. Backfill them.
 
 **Deprioritized indefinitely** (need authenticated/app-specific context a generic scanner can't safely infer): prompt-injection testing, generic IDOR, multi-tenant leakage, auth-bypass. SQLmap/DalFox SQLi/XSS — separate future specs, not started.
 
