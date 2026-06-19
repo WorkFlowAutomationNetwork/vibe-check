@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
+import { assertSafeHostname, SsrfError } from '@/lib/security/ssrf'
 
 const CreateUrlSchema = z.object({
   url: z.string().url(),
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
   // Normalize: lowercase hostname, strip trailing slash
   const parsed_url = new URL(parsed.data.url)
   const normalized = `${parsed_url.protocol}//${parsed_url.hostname}${parsed_url.pathname.replace(/\/$/, '') || ''}`
+
+  // SSRF guard: reject internal/private hosts before any DB work.
+  try {
+    assertSafeHostname(parsed_url.hostname)
+  } catch (e) {
+    if (e instanceof SsrfError) {
+      return NextResponse.json({ error: 'unsupported_host' }, { status: 422 })
+    }
+    throw e
+  }
 
   // Check for duplicate FIRST — if they own this URL already, skip to verify rather than hitting the limit error
   const { data: existing } = await supabase
