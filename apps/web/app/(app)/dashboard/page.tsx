@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
 import RescanButton from '@/components/dashboard/RescanButton'
+import RemoveUrlButton from '@/components/dashboard/RemoveUrlButton'
 import { createServerClient } from '@/lib/supabase/server'
 import type { UrlRow, ScanRow, BadgeRow, ActivityLogRow } from '@/types'
 import '../app.css'
@@ -16,6 +17,7 @@ const EVENT_DISPLAY: Record<string, { glyph: string; label: string; cls: string 
   badge_issued:   { glyph: '✓', label: 'Badge issued',    cls: 'badge' },
   cve_matched:    { glyph: '!', label: 'New CVE matched', cls: 'cve' },
   url_added:      { glyph: '+', label: 'URL added',       cls: '' },
+  url_removed:    { glyph: '✕', label: 'URL removed',     cls: '' },
 }
 
 function timeAgo(iso: string | null): string {
@@ -85,6 +87,9 @@ export default async function DashboardPage() {
       latestScanByUrlId.set(scan.url_id, scan)
     }
   }
+
+  // URLs with any scan (any status) cannot be removed.
+  const hasScanByUrlId = new Set<string>(allScans.map(s => s.url_id))
 
   // Badge per URL
   const badgeByUrlId = new Map<string, BadgeRow>()
@@ -284,6 +289,9 @@ export default async function DashboardPage() {
                         <Link href={`/report/${latestScan.id}`} className="btn-mini ghost">View report</Link>
                       )}
                       {url.verified && <RescanButton urlId={url.id} />}
+                      {!hasScanByUrlId.has(url.id) && (
+                        <RemoveUrlButton urlId={url.id} urlLabel={cleanUrl} />
+                      )}
                     </div>
                   </div>
                 </div>

@@ -58,7 +58,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 | Admin (dashboard, users, subscriptions, scans, analytics, revenue, settings) | ✅ Built. Revenue page uses placeholder for live Stripe API. |
 | `/demo/*` | Frozen static UI for marketing reference. |
 
-**API routes** — all built and auth-guarded: `/api/urls` (POST), `/api/scans` (POST/GET), `/api/verify` (POST), `/api/billing/{checkout,portal,stripe-webhook}`, `/api/webhooks` (deploy hook, API-key auth + dispatch), `/api/badge/[token]` (real verification), `/api/admin/*`. **Missing:** no `DELETE /api/urls/[id]` (see gaps).
+**API routes** — all built and auth-guarded: `/api/urls` (POST), `/api/urls/[id]` (DELETE — a user can remove a URL that has no scans yet; returns 409 `url_has_scans` once a scan exists), `/api/scans` (POST/GET), `/api/verify` (POST), `/api/billing/{checkout,portal,stripe-webhook}`, `/api/webhooks` (deploy hook, API-key auth + dispatch), `/api/badge/[token]` (real verification), `/api/admin/*`.
 
 ---
 
@@ -94,14 +94,13 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 ## Gaps / What to build next (priority order)
 
-1. **`DELETE /api/urls/[id]` + dashboard remove button.** Product requirement: a user who hasn't completed a scan should be able to remove a URL (don't lock them out after a typo); hide the option once a scan exists. Not built.
-2. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
-3. **Live Stripe products + keys.**
-4. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads), Vercel/Netlify deploy webhooks, Slack alerts. Page is currently a mock.
-5. **Resend emails** — welcome, scan-complete, CVE alert.
-6. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
-7. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
-8. **Backfill web test coverage.** `apps/web` gained a `vitest` harness with the DELETE-url feature (2026-06-19) — its first covered route. The other existing routes (`urls` POST, `scans`, `verify`, `billing/*`, `webhooks`, `badge/[token]`, `admin/*`) still have no tests. Backfill them.
+1. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
+2. **Live Stripe products + keys.**
+3. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads), Vercel/Netlify deploy webhooks, Slack alerts. Page is currently a mock.
+4. **Resend emails** — welcome, scan-complete, CVE alert.
+5. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
+6. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
+7. **Backfill web test coverage.** `apps/web` gained a `vitest` harness with the DELETE-url feature (2026-06-19) — its first covered route. The other existing routes (`urls` POST, `scans`, `verify`, `billing/*`, `webhooks`, `badge/[token]`, `admin/*`) still have no tests. Backfill them.
 
 **Deprioritized indefinitely** (need authenticated/app-specific context a generic scanner can't safely infer): prompt-injection testing, generic IDOR, multi-tenant leakage, auth-bypass. SQLmap/DalFox SQLi/XSS — separate future specs, not started.
 
