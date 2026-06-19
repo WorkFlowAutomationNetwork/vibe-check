@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { promises as dns } from 'dns'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
+import { assertSafeHostname, safeFetch, SsrfError } from '@/lib/security/ssrf'
 
 const VerifySchema = z.object({
   url_id: z.string().uuid(),
@@ -20,7 +21,7 @@ async function checkDns(domain: string, token: string): Promise<boolean> {
 
 async function checkFile(domain: string, token: string): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await safeFetch(
       `https://${domain}/.well-known/vibe-check-verify.txt`,
       { signal: AbortSignal.timeout(5000) },
     )
@@ -34,7 +35,7 @@ async function checkFile(domain: string, token: string): Promise<boolean> {
 
 async function checkMeta(domain: string, token: string): Promise<boolean> {
   try {
-    const res = await fetch(`https://${domain}/`, { signal: AbortSignal.timeout(8000) })
+    const res = await safeFetch(`https://${domain}/`, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return false
     const html = await res.text()
     const match = html.match(/<meta\s+name=["']vibe-check["']\s+content=["']([^"']+)["']/i)
@@ -78,6 +79,16 @@ export async function POST(request: Request) {
   }
 
   const domain = new URL(urlRow.url).hostname
+
+  try {
+    assertSafeHostname(domain)
+  } catch (e) {
+    if (e instanceof SsrfError) {
+      return NextResponse.json({ error: 'unsupported_host' }, { status: 422 })
+    }
+    throw e
+  }
+
   const token: string = urlRow.verification_token
 
   let verified = false
