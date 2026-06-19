@@ -54,7 +54,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 | Marketing: `/`, `/pricing`, `/trust` | ✅ Built. `/terms` + `/privacy` ⚠️ **draft, lawyer review + `[BRACKETED]` placeholders pending**. |
 | Auth: sign-in / sign-up / reset / callback | ✅ Built. Sign-up has Terms acceptance gate. |
 | App: dashboard, onboard, report, public report, settings, billing, badge, activity | ✅ Wired. |
-| `/integrations` | ⚠️ **Mock only.** Entirely hardcoded (acme-app, fake API key, fake hook log). No OAuth, no `/api/integrations`, buttons inert. |
+| `/integrations` | ⚠️ **Mock only.** Entirely hardcoded (acme-app, fake API key, fake hook log). No OAuth, no `/api/integrations`, buttons inert. **Scope: GitHub + Vercel/Netlify only — Slack dropped (too niche).** |
 | Admin (dashboard, users, subscriptions, scans, analytics, revenue, settings) | ✅ Built. Revenue page uses placeholder for live Stripe API. |
 | `/demo/*` | Frozen static UI for marketing reference. |
 
@@ -94,13 +94,31 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 
 ## Gaps / What to build next (priority order)
 
-1. **Reconcile homepage/billing copy with reality** (see mismatches below) — before paid launch.
-2. **Live Stripe products + keys.**
-3. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads), Vercel/Netlify deploy webhooks, Slack alerts. Page is currently a mock.
-4. **Resend emails** — welcome, scan-complete, CVE alert.
-5. **Lawyer review** of `/terms` + `/privacy`; resolve `[BRACKETED]` placeholders. *(Launch blocker.)*
-6. **Operational (from security remediation):** retention purge job + account-deletion cascade verification (C3); sub-processor DPAs (C2).
-7. **Backfill web test coverage.** `apps/web` gained a `vitest` harness with the DELETE-url feature (2026-06-19) — its first covered route. The other existing routes (`urls` POST, `scans`, `verify`, `billing/*`, `webhooks`, `badge/[token]`, `admin/*`) still have no tests. Backfill them.
+> **Launch sequencing (set 2026-06-20).** Product correctness first, commerce last. Order:
+> ① scan correctness ② integrations (GitHub + Vercel) ③ email notifications ④ Stripe
+> billing/portal reflection ⑤ pricing decisions ⑥ website accuracy + docs/FAQs
+> ⑦ detailed testing ⑧ Stripe live payment processing. **Slack integration dropped (too niche).**
+
+1. **Scan correctness — verify the product actually works end-to-end.** Confirm every tier
+   (passive/active/deep) runs against real targets, findings + grade + PDF are written
+   correctly, and the badge issues. Fix the known `cert-expiry` bug (see *Known code issues*).
+   This is the foundation everything else sells.
+2. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads) + Vercel/Netlify deploy
+   webhooks. Page is currently a mock. *(Slack dropped — too niche.)*
+3. **Resend emails** — welcome, scan-complete, CVE alert.
+4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
+   state, invoices, and subscription lifecycle.
+5. **Pricing decisions** — reprice (see *Open product decisions*) before copy is finalised.
+6. **Website accuracy + docs/FAQs** — reconcile homepage/billing copy with reality (see
+   mismatches below); write documentation + FAQs.
+7. **Detailed testing** — incl. backfilling `apps/web` route test coverage. `vitest` harness
+   landed with the DELETE-url feature (2026-06-19); routes `urls` POST, `scans`, `verify`,
+   `billing/*`, `webhooks`, `badge/[token]`, `admin/*` still untested.
+8. **Stripe live payment processing** — create live-mode products + switch keys. *(Last.)*
+
+**Launch blockers tracked separately (not in build sequence):** lawyer review of `/terms` +
+`/privacy` + resolve `[BRACKETED]` placeholders; operational items — retention purge job +
+account-deletion cascade verification (C3), sub-processor DPAs (C2).
 
 **Deprioritized indefinitely** (need authenticated/app-specific context a generic scanner can't safely infer): prompt-injection testing, generic IDOR, multi-tenant leakage, auth-bypass. SQLmap/DalFox SQLi/XSS — separate future specs, not started.
 
@@ -127,7 +145,9 @@ Honest claims that **are** backed: SSL/security headers, exposed endpoints (Supa
 
 ## Known code issues
 
-**`cert-expiry` finding missing** — `scanners/tls.py::_process_result()`. sslyze emits a `CryptographyDeprecationWarning` on a malformed trust-store serial; `verified_certificate_chain[0]` then fails inside `except Exception: pass`, so `cert-expiry` is never written. Fix: fall back to `received_certificate_chain`, or suppress the warning before the sslyze call.
+*(none currently open)*
+
+**Resolved 2026-06-20 — `cert-expiry` finding missing** (`scanners/tls.py::_process_result()`). Root cause was **not** the trust-store warning originally hypothesised: the code read `cert_info.result.verified_certificate_chain[0]`, but sslyze 6.x `CertificateInfoScanResult` has no such attribute, so it raised `AttributeError` on **every** host and the bare `except: pass` swallowed it — `cert-expiry` was never emitted for any scan. Fixed to read the leaf from `certificate_deployments[0].received_certificate_chain[0].not_valid_after_utc` (intrinsic expiry, independent of path validation) and to emit an `info` finding instead of silently swallowing on parse failure. Regression tests added in `tests/test_tls.py` exercising `_process_result` (previously untested). Verified live against example.com. Scanner suite 157 passed. **Needs Fly.io redeploy to reach prod.**
 
 ---
 

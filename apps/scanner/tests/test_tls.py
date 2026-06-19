@@ -1,6 +1,22 @@
-import pytest
-from unittest.mock import MagicMock, patch
+import types
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 from scanners.tls import TLSScanner, _analyze_cert_info, _analyze_tls_versions
+
+
+def _scan_result_with_expiry(days_until_expiry: int):
+    """Build a fake sslyze scan_result mirroring the real 6.x CERTIFICATE_INFO shape:
+    scan_result.certificate_info.result.certificate_deployments[0]
+        .received_certificate_chain[0].not_valid_after_utc
+    Cipher-suite attrs are left unset so _has_accepted() reads them as None.
+    """
+    leaf = types.SimpleNamespace(
+        not_valid_after_utc=datetime.now(timezone.utc) + timedelta(days=days_until_expiry)
+    )
+    deployment = types.SimpleNamespace(received_certificate_chain=[leaf])
+    ci_result = types.SimpleNamespace(certificate_deployments=[deployment])
+    attempt = types.SimpleNamespace(result=ci_result)
+    return types.SimpleNamespace(certificate_info=attempt)
 
 
 def test_cert_expired_is_critical():
@@ -38,6 +54,33 @@ def test_weak_tls_only_is_critical():
 def test_weak_tls_alongside_modern_is_medium():
     findings = _analyze_tls_versions(has_tls12=True, has_tls13=False, has_weak=True)
     assert any(f.severity == "medium" for f in findings)
+
+
+def test_process_result_emits_cert_expiry_for_valid_cert():
+    """Regression: _process_result must read expiry from the real sslyze 6.x
+    certificate_deployments[0].received_certificate_chain[0] path. Previously it
+    read a non-existent .verified_certificate_chain, so cert-expiry was never emitted."""
+    scanner = TLSScanner("https://example.com")
+    findings = scanner._process_result(_scan_result_with_expiry(200))
+    cert_findings = [f for f in findings if f.check_name == "cert-expiry"]
+    assert len(cert_findings) == 1
+    assert cert_findings[0].severity == "pass"
+
+
+def test_process_result_emits_cert_expiry_medium_when_expiring_soon():
+    scanner = TLSScanner("https://example.com")
+    findings = scanner._process_result(_scan_result_with_expiry(15))
+    cert_findings = [f for f in findings if f.check_name == "cert-expiry"]
+    assert len(cert_findings) == 1
+    assert cert_findings[0].severity == "medium"
+
+
+def test_process_result_emits_cert_expiry_critical_when_expired():
+    scanner = TLSScanner("https://example.com")
+    findings = scanner._process_result(_scan_result_with_expiry(-5))
+    cert_findings = [f for f in findings if f.check_name == "cert-expiry"]
+    assert len(cert_findings) == 1
+    assert cert_findings[0].severity == "critical"
 
 
 def test_scanner_returns_info_on_connection_failure():
