@@ -35,7 +35,7 @@ def severity_for(rule_id: str) -> str:
 
 
 def mask_secret(secret: str) -> str:
-    if not secret or len(secret) <= 8:
+    if not secret or len(secret) <= 12:
         return "……"
     return f"{secret[:4]}…{secret[-4:]}"
 

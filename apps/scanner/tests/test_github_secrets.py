@@ -100,3 +100,79 @@ def test_clone_deleted_even_on_gitleaks_failure():
                 token="ghs_t",
             ).run()
     rmtree.assert_called_once()  # cleanup still ran
+
+
+def test_failed_clone_raises_repo_scan_error_and_cleans_up():
+    from scanners.github_secrets import GitHubSecretsScanner, RepoScanError
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd[0] == "git" and cmd[1] == "clone":
+            return MagicMock(returncode=1, stdout="", stderr="fatal: repository not found")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake_run), \
+         patch("scanners.github_secrets.shutil.rmtree") as rmtree:
+        with pytest.raises(RepoScanError):
+            GitHubSecretsScanner(
+                clone_url="https://x-access-token:ghs_SECRETTOKEN@github.com/o/r.git",
+                token="ghs_SECRETTOKEN",
+            ).run()
+    rmtree.assert_called_once()  # cleanup still ran
+
+
+def test_failed_clone_error_does_not_leak_token():
+    from scanners.github_secrets import GitHubSecretsScanner, RepoScanError
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd[0] == "git" and cmd[1] == "clone":
+            return MagicMock(returncode=1, stdout="", stderr="fatal: repository not found")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake_run), \
+         patch("scanners.github_secrets.shutil.rmtree"):
+        with pytest.raises(RepoScanError) as exc_info:
+            GitHubSecretsScanner(
+                clone_url="https://x-access-token:ghs_SECRETTOKEN@github.com/o/r.git",
+                token="ghs_SECRETTOKEN",
+            ).run()
+    assert "ghs_SECRETTOKEN" not in str(exc_info.value)
+
+
+def test_failed_rev_parse_raises_repo_scan_error_and_cleans_up():
+    from scanners.github_secrets import GitHubSecretsScanner, RepoScanError
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd[0] == "git" and cmd[1] == "clone":
+            return MagicMock(returncode=0)
+        if cmd[:2] == ["git", "rev-parse"]:
+            return MagicMock(returncode=128, stdout="")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake_run), \
+         patch("scanners.github_secrets.shutil.rmtree") as rmtree:
+        with pytest.raises(RepoScanError):
+            GitHubSecretsScanner(
+                clone_url="https://x-access-token:ghs_t@github.com/o/r.git",
+                token="ghs_t",
+            ).run()
+    rmtree.assert_called_once()  # cleanup still ran
+
+
+def test_empty_rev_parse_stdout_raises_repo_scan_error():
+    from scanners.github_secrets import GitHubSecretsScanner, RepoScanError
+
+    def fake_run(cmd, *args, **kwargs):
+        if cmd[0] == "git" and cmd[1] == "clone":
+            return MagicMock(returncode=0)
+        if cmd[:2] == ["git", "rev-parse"]:
+            return MagicMock(returncode=0, stdout="")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake_run), \
+         patch("scanners.github_secrets.shutil.rmtree") as rmtree:
+        with pytest.raises(RepoScanError):
+            GitHubSecretsScanner(
+                clone_url="https://x-access-token:ghs_t@github.com/o/r.git",
+                token="ghs_t",
+            ).run()
+    rmtree.assert_called_once()  # cleanup still ran

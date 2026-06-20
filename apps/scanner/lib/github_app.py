@@ -37,7 +37,7 @@ def mint_installation_token(
     """Exchange the App JWT for a short-lived installation token, optionally
     scoped to specific repository ids. Returns the token string only."""
     app_jwt = build_app_jwt()
-    body: dict = {}
+    body: dict[str, list[int]] = {}
     if repository_ids is not None:
         body["repository_ids"] = repository_ids
     resp = httpx.post(

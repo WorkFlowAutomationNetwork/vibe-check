@@ -28,6 +28,17 @@ def test_mask_secret_short_value_fully_hidden():
     assert mask_secret("abc123") == "……"
 
 
+def test_mask_secret_ten_char_value_fully_hidden():
+    from scanners.github_secrets_rules import mask_secret
+    assert mask_secret("abcdefghij") == "……"
+
+
+def test_mask_secret_long_value_still_shows_ends():
+    from scanners.github_secrets_rules import mask_secret
+    masked = mask_secret("sk_live_abcdefghijklmnop7f9x")
+    assert masked == "sk_l…7f9x"
+
+
 def test_redact_finding_never_leaks_raw_secret():
     from scanners.github_secrets_rules import redact_finding
     raw = {
@@ -56,3 +67,18 @@ def test_redact_finding_never_leaks_raw_secret():
     assert row["commit_author"] == "Jane"
     assert row["committed_at"] == "2026-01-02T03:04:05Z"
     assert "remediation" in row
+
+
+def test_redact_finding_missing_rule_id_defaults_unknown():
+    from scanners.github_secrets_rules import redact_finding
+    raw = {"File": "config/.env", "Secret": "sk_live_SUPERSECRETVALUE123"}
+    row = redact_finding(raw)
+    assert row["rule_id"] == "unknown"
+    assert row["severity"] == "medium"
+
+
+def test_redact_finding_missing_secret_does_not_raise():
+    from scanners.github_secrets_rules import redact_finding
+    raw = {"RuleID": "generic-api-key", "File": "config/.env"}
+    row = redact_finding(raw)
+    assert row["match_preview"] == "……"

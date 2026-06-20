@@ -13,6 +13,10 @@ from dataclasses import dataclass
 from scanners.github_secrets_rules import redact_finding
 
 
+class RepoScanError(Exception):
+    pass
+
+
 @dataclass
 class RepoScanResult:
     mode: str            # "full" | "incremental"
@@ -54,12 +58,21 @@ class GitHubSecretsScanner:
         clone_dir = os.path.join(workdir, "repo")
         report_path = os.path.join(workdir, "gitleaks.json")
         try:
-            self._run(["git", "clone", self.clone_url, clone_dir])
+            clone = self._run(["git", "clone", self.clone_url, clone_dir])
+            if clone.returncode != 0:
+                raise RepoScanError(
+                    f"git clone failed (exit {clone.returncode}) for {self.safe_clone_url()}"
+                )
 
             head = self._run(
                 ["git", "rev-parse", "HEAD"], cwd=clone_dir
             )
             head_sha = head.stdout.strip()
+            if head.returncode != 0 or not head_sha:
+                raise RepoScanError(
+                    f"git rev-parse HEAD failed (exit {head.returncode}) for "
+                    f"{self.safe_clone_url()}"
+                )
 
             mode = "full"
             log_opts: str | None = None

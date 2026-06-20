@@ -4,9 +4,6 @@ import jwt as pyjwt
 import pytest
 from unittest.mock import patch, MagicMock
 
-# A throwaway RSA key generated only for tests (never a real GitHub key).
-TEST_PRIVATE_KEY = None  # set in fixture below
-
 
 @pytest.fixture(autouse=True)
 def _key(monkeypatch):
