@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 
 from lib import consent
+from lib import repo_consent
 from lib.activity import log_event
 from lib.badges import issue_badge
+from lib.github_app import mint_installation_token
 from lib.settings import settings
 from lib.storage import upload_report_pdf
 from lib.supabase import get_supabase
@@ -15,6 +17,7 @@ from scanners.storage_exposure import StorageExposureScanner
 from scanners.secrets import SecretsScanner
 from scanners.rate_limit import RateLimitScanner
 from scanners.nuclei import NucleiScanner
+from scanners.github_secrets import GitHubSecretsScanner
 from jobs.config import celery_app
 
 
@@ -138,3 +141,76 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
 def run_scan(self, scan_id: str, url_id: str, scan_type: str, user_id: str) -> None:
     _execute_scan(self, scan_id, url_id, scan_type, user_id)
+
+
+def _mark_repo_scan(repo_scan_id: str, **fields) -> None:
+    get_supabase().table("repo_scans").update(fields).eq("id", repo_scan_id).execute()
+
+
+def _execute_repo_scan(task_self, repo_scan_id: str, repo_id: str, user_id: str) -> None:
+    """Run one committed-secret scan for a connected repo. Mirrors _execute_scan:
+    authorization gate first, then mint token → clone → gitleaks → redacted
+    findings, with the same retry/failure policy."""
+    _mark_repo_scan(repo_scan_id, status="running", started_at=_now())
+
+    try:
+        repo = repo_consent.verify(repo_id, user_id)
+    except repo_consent.RepoConsentError:
+        _mark_repo_scan(repo_scan_id, status="failed", completed_at=_now())
+        log_event(user_id, "repo_scan_failed", scan_id=repo_scan_id,
+                  payload={"detail": "repo authorization failed"})
+        raise  # do not retry authorization errors
+
+    if task_self.request.retries == 0:
+        log_event(user_id, "repo_scan_started", scan_id=repo_scan_id,
+                  payload={"repo": repo["full_name"]})
+
+    try:
+        token = mint_installation_token(
+            repo["installation_id"], repository_ids=[repo["github_repo_id"]]
+        )
+        clone_url = f"https://x-access-token:{token}@github.com/{repo['full_name']}.git"
+        scanner = GitHubSecretsScanner(
+            clone_url=clone_url, token=token, base_sha=repo["last_scanned_sha"]
+        )
+        result = scanner.run()
+
+        if result.findings:
+            get_supabase().table("repo_findings").insert([
+                {**f, "repo_scan_id": repo_scan_id, "user_id": user_id,
+                 "first_seen_at": _now()}
+                for f in result.findings
+            ]).execute()
+
+        get_supabase().table("repos").update(
+            {"last_scanned_sha": result.head_sha, "last_scan_at": _now()}
+        ).eq("id", repo_id).execute()
+
+        _mark_repo_scan(
+            repo_scan_id,
+            status="completed",
+            mode=result.mode,
+            base_sha=result.base_sha,
+            head_sha=result.head_sha,
+            secrets_found=len(result.findings),
+            scanner_version=settings.scanner_version,
+            completed_at=_now(),
+        )
+
+        log_event(user_id, "repo_scan_completed", scan_id=repo_scan_id,
+                  payload={"repo": repo["full_name"], "mode": result.mode,
+                           "clone_url": scanner.safe_clone_url(),
+                           "secrets_found": len(result.findings),
+                           "detail": f"{len(result.findings)} secret(s) · {result.mode} scan"})
+
+    except Exception as exc:
+        _mark_repo_scan(repo_scan_id, status="failed", completed_at=_now())
+        if task_self.request.retries >= task_self.max_retries:
+            log_event(user_id, "repo_scan_failed", scan_id=repo_scan_id,
+                      payload={"repo": repo["full_name"], "detail": "scan error"})
+        raise task_self.retry(exc=exc)
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+def run_repo_scan(self, repo_scan_id: str, repo_id: str, user_id: str) -> None:
+    _execute_repo_scan(self, repo_scan_id, repo_id, user_id)
