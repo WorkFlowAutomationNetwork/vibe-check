@@ -109,7 +109,11 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
    and re-validated live** — merlin deep re-scan now finishes in 316s with 4 Nuclei
    findings (was 0) and the duplicate header rows collapsed to one. Merged to master
    (`85838ff`). Passive validated on all 3; **active/deep validated on all 3** (deep
-   issues badges correctly).
+   issues badges correctly). **Customer-facing report verified 2026-06-20:** downloaded
+   merlin's deep-scan PDF from Storage and confirmed it renders all severities + grade +
+   every finding field correctly (cert-expiry and Nuclei-dedup fixes both visible in the
+   PDF). Two loose ends closed (see *Resolved* below): the `urls.verified` data anomaly,
+   and a duplicate "No Supabase backend detected" row. **Step ① complete.**
 2. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads) + Vercel/Netlify deploy
    webhooks. Page is currently a mock. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
@@ -153,6 +157,10 @@ Honest claims that **are** backed: SSL/security headers, exposed endpoints (Supa
 ## Known code issues
 
 *(none currently open)*
+
+**Resolved 2026-06-20 — duplicate "No Supabase backend detected" finding** (`scanners/storage_exposure.py`). When an app has no Supabase backend, the table-exposure **and** storage-exposure scanners each emitted an identical `info` finding with the same title, so reports showed the row twice (caught while eyeballing merlin's deep-scan PDF). Fixed: the storage scanner now returns `[]` when no creds are found and lets the table scanner own the single note. New behaviour pinned by `test_storage_exposure.py`. Scanner suite 159 passed. **Deployed to Fly + re-validated live** — merlin active re-scan now shows exactly one such row (was two).
+
+**Resolved 2026-06-20 — `urls.verified` could be set without proof** (migration `20260620000022`). A few `urls` rows were `verified=true` with NULL `verification_method`/`verified_at` (and one `verified_at` predating its own `created_at`) — leftovers of direct service-role writes during early manual testing that bypassed `/api/verify` (the route always sets all three atomically after a real DNS/file/meta check). Not exploitable (only the service-role holder can write these), but a latent integrity hole. Reconciled the rows and added CHECK constraint `urls_verified_requires_proof` so `verified=true` can never again exist without method + verified_at. Applied to the live project; DNS TXT for the affected domain confirmed present before reconciling.
 
 **Resolved 2026-06-20 — Nuclei silent timeout** (`scanners/nuclei.py`). Deep scans whose
 Nuclei run exceeded the 300s budget caught `TimeoutExpired` → returned `None` → `run()`
