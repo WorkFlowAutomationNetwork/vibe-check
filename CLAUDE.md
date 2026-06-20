@@ -343,7 +343,7 @@ Reference HTML designs are in `/design/` — use these as the source of truth fo
 **Python:**
 - Type hints on every function signature.
 - Pydantic models for all API request/response shapes.
-- Subprocess calls to CLI tools always use `timeout` parameter. Nuclei: 300s max (measured ~257s for the curated safe-tag scope against a real target on the production VM — 120s was the original plan but killed almost every real scan). SQLmap: 90s max. DalFox: 60s max.
+- Subprocess calls to CLI tools always use `timeout` parameter. Nuclei: 450s max (was 300s, but real targets in validation rode/exceeded the 300s ceiling — `merlin.systems` timed out and lost its whole Nuclei dimension; 120s was the original plan but killed almost every real scan). On timeout, `nuclei.py` salvages the partial JSONL already streamed and appends an `info` "scan incomplete" finding rather than silently returning nothing; repeat matches of one template are collapsed into a single finding listing the locations. SQLmap: 90s max. DalFox: 60s max.
 - RateLimitScanner: capped at 17 requests worst case (1 homepage GET + 2 login-link GETs + 6 generic-path GETs + the 8-POST rate-limit battery, run exactly once on a single chosen target) — see `apps/scanner/scanners/rate_limit.py`.
 - All subprocess calls log the full command (redacted of any tokens) to the activity log.
 

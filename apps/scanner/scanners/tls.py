@@ -144,12 +144,28 @@ class TLSScanner(BaseScanner):
         cert_info = getattr(scan_result, "certificate_info", None)
         if cert_info and not isinstance(cert_info, Exception):
             try:
-                leaf = cert_info.result.verified_certificate_chain[0]
+                # sslyze 6.x: the leaf certificate the server presented lives at
+                # certificate_deployments[0].received_certificate_chain[0]. Its expiry is
+                # intrinsic to the cert and does NOT depend on trust-store path validation
+                # (which can fail/return None on chain hiccups). received_certificate_chain
+                # is always populated when the handshake succeeded.
+                deployment = cert_info.result.certificate_deployments[0]
+                leaf = deployment.received_certificate_chain[0]
                 expiry: datetime = leaf.not_valid_after_utc
                 days_left = (expiry - datetime.now(timezone.utc)).days
                 findings.extend(_analyze_cert_info(days_left))
-            except Exception:
-                pass
+            except Exception as exc:
+                # Never swallow silently — a missing cert-expiry finding is a hole in a
+                # security report. Surface that we couldn't read it instead.
+                findings.append(Finding(
+                    check_name="cert-expiry",
+                    severity="info",
+                    category="transport",
+                    title="Certificate Expiry Could Not Be Determined",
+                    description=f"sslyze returned certificate data but it could not be parsed — {exc}",
+                    what_we_did="Attempted to read the certificate expiry date from sslyze results.",
+                    remediation="Verify the certificate is served correctly; re-run the scan.",
+                ))
 
         def _has_accepted(attr_name: str) -> bool:
             result = getattr(scan_result, attr_name, None)

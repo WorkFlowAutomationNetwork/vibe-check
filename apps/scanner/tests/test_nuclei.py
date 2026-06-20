@@ -135,16 +135,53 @@ def test_match_with_non_dict_info_does_not_raise_and_falls_back_to_template_id()
     assert f.severity == "info"
 
 
-def test_binary_not_found_returns_empty_list():
+def test_binary_not_found_returns_visible_unavailable_finding():
+    # An infra failure (nuclei missing) must not silently vanish from a paid deep
+    # report — surface that the dimension was skipped rather than returning [].
     with patch("scanners.nuclei.subprocess.run", side_effect=FileNotFoundError("nuclei: not found")):
         findings = NucleiScanner(URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].check_name == "nuclei-unavailable"
+    assert findings[0].severity == "info"
 
 
-def test_timeout_returns_empty_list():
-    with patch("scanners.nuclei.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="nuclei", timeout=300)):
+def test_timeout_with_no_partial_output_flags_incomplete_not_clean():
+    # Timeout with nothing captured must NOT report the reassuring "no issues found"
+    # pass finding — it must report that the scan was truncated.
+    with patch("scanners.nuclei.subprocess.run",
+               side_effect=subprocess.TimeoutExpired(cmd="nuclei", timeout=450)):
         findings = NucleiScanner(URL).run()
-    assert findings == []
+    assert len(findings) == 1
+    assert findings[0].check_name == "nuclei-incomplete"
+    assert findings[0].severity == "info"
+    assert not any(f.check_name == "nuclei-scan" and f.severity == "pass" for f in findings)
+
+
+def test_timeout_salvages_partial_output_and_appends_incomplete_notice():
+    match = {"template-id": "tmpl-partial",
+             "info": {"name": "Partial", "severity": "low", "description": "d"},
+             "matched-at": "https://example.com/x"}
+    exc = subprocess.TimeoutExpired(cmd="nuclei", timeout=450, output=_jsonl(match))
+    with patch("scanners.nuclei.subprocess.run", side_effect=exc):
+        findings = NucleiScanner(URL).run()
+    # the partial match is preserved...
+    assert any(f.check_name == "nuclei-tmpl-partial" for f in findings)
+    # ...and the report is honest that more may exist
+    assert any(f.check_name == "nuclei-incomplete" for f in findings)
+
+
+def test_duplicate_template_matches_collapse_to_one_finding_listing_locations():
+    base = {"info": {"name": "HTTP Missing Security Headers", "severity": "info", "description": "d"}}
+    matches = [
+        {"template-id": "http-missing-security-headers", **base, "matched-at": "https://example.com/"},
+        {"template-id": "http-missing-security-headers", **base, "matched-at": "https://example.com/a"},
+        {"template-id": "http-missing-security-headers", **base, "matched-at": "https://example.com/b"},
+    ]
+    with patch("scanners.nuclei.subprocess.run", return_value=_completed_process(_jsonl(*matches))):
+        findings = NucleiScanner(URL).run()
+    same = [f for f in findings if f.check_name == "nuclei-http-missing-security-headers"]
+    assert len(same) == 1                      # collapsed, not 3 rows
+    assert "/a" in same[0].description and "/b" in same[0].description  # locations preserved
 
 
 def test_nonzero_exit_with_no_stdout_returns_empty_pass_set_not_crash():
@@ -172,4 +209,4 @@ def test_invocation_uses_safe_tag_scope_and_rate_limit():
     assert command[command.index("-etags") + 1] == "dos,fuzz,intrusive"
     assert "-rate-limit" in command
     assert command[command.index("-rate-limit") + 1] == "50"
-    assert kwargs["timeout"] == 300
+    assert kwargs["timeout"] == 450
