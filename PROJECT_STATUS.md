@@ -99,10 +99,14 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 > billing/portal reflection ⑤ pricing decisions ⑥ website accuracy + docs/FAQs
 > ⑦ detailed testing ⑧ Stripe live payment processing. **Slack integration dropped (too niche).**
 
-1. **Scan correctness — verify the product actually works end-to-end.** Confirm every tier
-   (passive/active/deep) runs against real targets, findings + grade + PDF are written
-   correctly, and the badge issues. Fix the known `cert-expiry` bug (see *Known code issues*).
-   This is the foundation everything else sells.
+1. **Scan correctness — verify the product actually works end-to-end.** ✅ **Validated
+   2026-06-20** against 3 real owned domains (bathroomhealthos.com, chorusproject.io,
+   merlin.systems) — passive + deep on all. Status transitions, findings, grading, PDF
+   storage, badge issuance (active/30-day), and activity feed all confirmed correct. Two
+   scan-correctness bugs found + fixed in the process (see *Resolved* below): the
+   `cert-expiry` silent miss, and Nuclei's silent timeout (deep scans on slow sites
+   dropped the whole Nuclei dimension with no warning). **Both fixes need the Fly.io
+   redeploy + a re-validation scan of merlin to confirm live.**
 2. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads) + Vercel/Netlify deploy
    webhooks. Page is currently a mock. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
@@ -146,6 +150,17 @@ Honest claims that **are** backed: SSL/security headers, exposed endpoints (Supa
 ## Known code issues
 
 *(none currently open)*
+
+**Resolved 2026-06-20 — Nuclei silent timeout** (`scanners/nuclei.py`). Deep scans whose
+Nuclei run exceeded the 300s budget caught `TimeoutExpired` → returned `None` → `run()`
+returned `[]`: the **entire Nuclei dimension vanished from the report with no warning**, and
+the partial JSONL Nuclei had already streamed was discarded. `merlin.systems` (deep) lost all
+Nuclei findings this way; 2 of 3 validation targets rode the ceiling. Fixed: timeout now
+**salvages partial output** + appends a visible `nuclei-incomplete` info finding (binary-missing
+→ `nuclei-unavailable` info, no longer silent); budget raised **300s → 450s**; repeat matches of
+one template are **collapsed into one finding listing the locations** (the 10× "missing security
+headers" noise). New regression tests in `tests/test_nuclei.py`. Scanner suite 159 passed.
+**Needs Fly.io redeploy + merlin re-validation.**
 
 **Resolved 2026-06-20 — `cert-expiry` finding missing** (`scanners/tls.py::_process_result()`). Root cause was **not** the trust-store warning originally hypothesised: the code read `cert_info.result.verified_certificate_chain[0]`, but sslyze 6.x `CertificateInfoScanResult` has no such attribute, so it raised `AttributeError` on **every** host and the bare `except: pass` swallowed it — `cert-expiry` was never emitted for any scan. Fixed to read the leaf from `certificate_deployments[0].received_certificate_chain[0].not_valid_after_utc` (intrinsic expiry, independent of path validation) and to emit an `info` finding instead of silently swallowing on parse failure. Regression tests added in `tests/test_tls.py` exercising `_process_result` (previously untested). Verified live against example.com. Scanner suite 157 passed. **Needs Fly.io redeploy to reach prod.**
 
