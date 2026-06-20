@@ -114,8 +114,22 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
    every finding field correctly (cert-expiry and Nuclei-dedup fixes both visible in the
    PDF). Two loose ends closed (see *Resolved* below): the `urls.verified` data anomaly,
    and a duplicate "No Supabase backend detected" row. **Step ① complete.**
-2. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads) + Vercel/Netlify deploy
-   webhooks. Page is currently a mock. *(Slack dropped — too niche.)*
+2. **Integrations — in progress.** Scope decided 2026-06-20: GitHub = **committed-secret
+   scanning** (clone + gitleaks, full-history baseline then incremental), surfaced as a
+   **standalone repo report** (not CVE matching — that's a separate later project; deploy-
+   trigger overlaps Vercel). Spec + 3-plan split in `docs/superpowers/`.
+   - **Plan A (foundations) — ✅ shipped 2026-06-20** (merged `b95fc32`): 4 RLS tables
+     (`github_installations`, `repos`, `repo_scans`, `repo_findings`, live), GitHub App
+     connect/callback/webhook/disconnect routes + `lib/github/app.ts`, and an **honest
+     `/integrations` page** — real GitHub state, accurate data-handling copy, fabricated
+     Vercel/API-key/deploy-log mock data removed (Vercel now "coming soon"). 67 web tests
+     pass; production build clean. **Not live** until `vibe-check-app.com` is pointed at the
+     deployed app and the six `GITHUB_*` env vars are set (GitHub App `vibe-check-app`
+     created; user wiring domain→Vercel next).
+   - **Plan B (scanner)** — token minting + `GitHubSecretsScanner` (gitleaks + redaction) +
+     `run_repo_scan` task + internal `/api/repo-scans` + gitleaks in Dockerfile. *Next.*
+   - **Plan C (report UI)** — `/repos` + `/repos/[repoId]`.
+   - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
    state, invoices, and subscription lifecycle.
