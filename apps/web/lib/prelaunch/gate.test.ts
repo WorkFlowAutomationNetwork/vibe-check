@@ -1,0 +1,62 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import {
+  COOKIE_NAME, isLockEngaged, getConfiguredPassword, isExemptPath,
+  constantTimeEqual, signToken, verifyToken,
+} from './gate'
+
+describe('prelaunch gate primitives', () => {
+  beforeEach(() => {
+    delete process.env.PRELAUNCH_LOCK_ENABLED
+    delete process.env.PRELAUNCH_PASSWORD
+  })
+
+  it('exposes the fixed cookie name', () => {
+    expect(COOKIE_NAME).toBe('vibe_prelaunch')
+  })
+
+  it('lock is engaged only when the flag is exactly "true"', () => {
+    expect(isLockEngaged()).toBe(false)
+    process.env.PRELAUNCH_LOCK_ENABLED = 'false'
+    expect(isLockEngaged()).toBe(false)
+    process.env.PRELAUNCH_LOCK_ENABLED = 'true'
+    expect(isLockEngaged()).toBe(true)
+  })
+
+  it('reads the configured password, empty when unset', () => {
+    expect(getConfiguredPassword()).toBe('')
+    process.env.PRELAUNCH_PASSWORD = 'hunter2'
+    expect(getConfiguredPassword()).toBe('hunter2')
+  })
+
+  it('exempts the allowlisted prefixes and their subpaths, nothing else', () => {
+    for (const p of ['/prelaunch', '/api/prelaunch/unlock', '/api/billing/stripe-webhook',
+      '/api/webhooks/vercel', '/api/scans', '/api/repo-scans', '/api/auth/callback', '/auth/confirm']) {
+      expect(isExemptPath(p)).toBe(true)
+    }
+    for (const p of ['/', '/dashboard', '/sign-in', '/api/badge/x', '/prelaunchx']) {
+      expect(isExemptPath(p)).toBe(false)
+    }
+  })
+
+  it('constantTimeEqual matches equal strings and rejects others', () => {
+    expect(constantTimeEqual('abc', 'abc')).toBe(true)
+    expect(constantTimeEqual('abc', 'abd')).toBe(false)
+    expect(constantTimeEqual('abc', 'abcd')).toBe(false)
+  })
+
+  it('verifyToken accepts a token signed with the same password', async () => {
+    const token = await signToken('s3cret')
+    expect(await verifyToken(token, 's3cret')).toBe(true)
+  })
+
+  it('verifyToken rejects a token signed with a different password (rotation invalidates)', async () => {
+    const token = await signToken('old-pass')
+    expect(await verifyToken(token, 'new-pass')).toBe(false)
+  })
+
+  it('fails closed: empty password never verifies, even with a matching-shaped token', async () => {
+    const token = await signToken('')
+    expect(await verifyToken(token, '')).toBe(false)
+    expect(await verifyToken(undefined, 'x')).toBe(false)
+  })
+})
