@@ -23,7 +23,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 | Service | Status | Notes |
 |---|---|---|
 | Next.js (`apps/web`) | ✅ Live | Next 14 App Router, TS strict. Build clean. |
-| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 19 migrations applied. RLS on all tables. |
+| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 24 migrations applied. RLS on all tables. |
 | Scanner (`apps/scanner`) | ✅ Deployed | `vibe-check-scanner.fly.dev`. FastAPI + Celery + Redis. ~142 tests passing. nuclei v3.9.0 pinned, 13k templates live. VM 2GB/2CPU, scan timeout 300s. |
 | Redis | ✅ Deployed | Fly.io managed (`vibe-check-redis`). |
 | Stripe | ✅ Wired | Test-mode products (`starter_one_off` $9, `monitor_monthly` $19/mo, by lookup_key). Checkout + portal + webhook all verified end-to-end. **Live keys/products not yet created.** |
@@ -35,7 +35,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 
 ## Database (key facts)
 
-- 19 migrations applied (`supabase/migrations/`). All tables RLS-enabled; scanner uses service-role key (bypasses RLS).
+- 24 migrations applied (`supabase/migrations/`). All tables RLS-enabled; scanner uses service-role key (bypasses RLS).
 - `profiles.plan` = `free|starter|monitor`; `is_admin` bool; `stripe_subscription_status` mirrors Stripe. Migration 017 trigger blocks client-side edits to `is_admin`/`plan`/`stripe_*` (privilege-escalation fix).
 - `scans.scan_type` — **not** `.type`.
 - `plan_limits` (3 rows) + guard fns (`can_run_scan_type`, `can_add_url`) enforce limits at RLS layer; admins bypass. Starter is a **persistent unlock** (passive+active), not a single-use credit.
@@ -127,7 +127,9 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      deployed app and the six `GITHUB_*` env vars are set (GitHub App `vibe-check-app`
      created; user wiring domain→Vercel next).
    - **Plan B (scanner)** — token minting + `GitHubSecretsScanner` (gitleaks + redaction) +
-     `run_repo_scan` task + internal `/api/repo-scans` + gitleaks in Dockerfile. *Next.*
+     `run_repo_scan` task + internal `/api/repo-scans` + gitleaks in Dockerfile. **Plan written**
+     (`docs/superpowers/plans/2026-06-20-github-integration-plan-b-scanner.md`, 9 TDD tasks);
+     *execution in progress (subagent-driven).*
    - **Plan C (report UI)** — `/repos` + `/repos/[repoId]`.
    - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
@@ -223,7 +225,7 @@ apps/scanner/
   lib/{consent,supabase_creds,jwt,storage}.py
   reports/{grader,renderer}.py + templates/report.html
   fly.toml · Dockerfile (nuclei pinned v3.9.0)
-supabase/migrations/               ← 19 migrations (applied)
+supabase/migrations/               ← 24 migrations (applied)
 design/                            ← HTML UI references (source of truth for component structure)
 docs/superpowers/{specs,plans}/    ← dated specs + plans for scanner work
 ```
