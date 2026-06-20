@@ -105,8 +105,11 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
    storage, badge issuance (active/30-day), and activity feed all confirmed correct. Two
    scan-correctness bugs found + fixed in the process (see *Resolved* below): the
    `cert-expiry` silent miss, and Nuclei's silent timeout (deep scans on slow sites
-   dropped the whole Nuclei dimension with no warning). **Both fixes need the Fly.io
-   redeploy + a re-validation scan of merlin to confirm live.**
+   dropped the whole Nuclei dimension with no warning). **Both fixes deployed to Fly.io
+   and re-validated live** — merlin deep re-scan now finishes in 316s with 4 Nuclei
+   findings (was 0) and the duplicate header rows collapsed to one. Merged to master
+   (`85838ff`). Passive validated on all 3; **active/deep validated on all 3** (deep
+   issues badges correctly).
 2. **Integrations OAuth** — GitHub OAuth (CVE/manifest reads) + Vercel/Netlify deploy
    webhooks. Page is currently a mock. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
@@ -160,9 +163,9 @@ Nuclei findings this way; 2 of 3 validation targets rode the ceiling. Fixed: tim
 → `nuclei-unavailable` info, no longer silent); budget raised **300s → 450s**; repeat matches of
 one template are **collapsed into one finding listing the locations** (the 10× "missing security
 headers" noise). New regression tests in `tests/test_nuclei.py`. Scanner suite 159 passed.
-**Needs Fly.io redeploy + merlin re-validation.**
+**Deployed + re-validated live** (merlin deep: 0 → 4 Nuclei findings, 316s, dupes collapsed).
 
-**Resolved 2026-06-20 — `cert-expiry` finding missing** (`scanners/tls.py::_process_result()`). Root cause was **not** the trust-store warning originally hypothesised: the code read `cert_info.result.verified_certificate_chain[0]`, but sslyze 6.x `CertificateInfoScanResult` has no such attribute, so it raised `AttributeError` on **every** host and the bare `except: pass` swallowed it — `cert-expiry` was never emitted for any scan. Fixed to read the leaf from `certificate_deployments[0].received_certificate_chain[0].not_valid_after_utc` (intrinsic expiry, independent of path validation) and to emit an `info` finding instead of silently swallowing on parse failure. Regression tests added in `tests/test_tls.py` exercising `_process_result` (previously untested). Verified live against example.com. Scanner suite 157 passed. **Needs Fly.io redeploy to reach prod.**
+**Resolved 2026-06-20 — `cert-expiry` finding missing** (`scanners/tls.py::_process_result()`). Root cause was **not** the trust-store warning originally hypothesised: the code read `cert_info.result.verified_certificate_chain[0]`, but sslyze 6.x `CertificateInfoScanResult` has no such attribute, so it raised `AttributeError` on **every** host and the bare `except: pass` swallowed it — `cert-expiry` was never emitted for any scan. Fixed to read the leaf from `certificate_deployments[0].received_certificate_chain[0].not_valid_after_utc` (intrinsic expiry, independent of path validation) and to emit an `info` finding instead of silently swallowing on parse failure. Regression tests added in `tests/test_tls.py` exercising `_process_result` (previously untested). Verified live against example.com. **Deployed + confirmed live** — all 3 validation-domain scans now emit `cert-expiry`. Merged to master (`85838ff`).
 
 ---
 
