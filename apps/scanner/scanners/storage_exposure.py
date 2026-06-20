@@ -15,7 +15,10 @@ class StorageExposureScanner(BaseScanner):
         blobs = fetch_page_and_scripts(self.url, self.timeout)
         creds = extract_supabase_credentials(blobs)
         if not creds:
-            return [self._no_backend_finding()]
+            # The table-exposure scanner already reports the single
+            # "No Supabase backend detected" note for apps with no Supabase.
+            # Staying silent here avoids a duplicate identical row in the report.
+            return []
 
         supabase_url, anon_key = creds
         buckets = self._list_buckets(supabase_url, anon_key)
@@ -114,22 +117,6 @@ class StorageExposureScanner(BaseScanner):
             )]
 
         return [self._all_buckets_public_finding(len(buckets))]
-
-    def _no_backend_finding(self) -> Finding:
-        return Finding(
-            check_name="supabase-storage-exposure",
-            severity="info",
-            category="endpoints",
-            title="No Supabase backend detected",
-            description=(
-                "This check looks for a Supabase project URL and anon key in the "
-                "site's client-side code. We didn't find one, so this app doesn't "
-                "appear to use Supabase Storage — this check only applies to apps "
-                "that do."
-            ),
-            what_we_did="Scanned the page and its JavaScript bundles for a Supabase project URL and anon key.",
-            remediation="",
-        )
 
     def _no_buckets_finding(self) -> Finding:
         return Finding(

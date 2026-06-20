@@ -33,13 +33,14 @@ def _mock_page_and_script():
     respx.get(f"{BASE_URL}/app.js").mock(return_value=httpx.Response(200, text=APP_JS))
 
 
-def test_no_credentials_found_returns_info_finding():
+def test_no_credentials_found_returns_no_finding():
+    # When the app has no Supabase backend at all, the table-exposure scanner
+    # already emits the single "No Supabase backend detected" note. The storage
+    # scanner stays silent here so the report doesn't show two identical rows.
     with respx.mock:
         respx.get(BASE_URL).mock(return_value=httpx.Response(200, text="<html>no keys here</html>"))
         findings = StorageExposureScanner(BASE_URL).run()
-    assert len(findings) == 1
-    assert findings[0].severity == "info"
-    assert findings[0].check_name == "supabase-storage-exposure"
+    assert findings == []
 
 
 def test_bucket_list_request_fails_returns_info_finding():
