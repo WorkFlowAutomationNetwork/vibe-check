@@ -15,9 +15,12 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase()
   const supabase = createServiceClient()
-  await supabase
+  const { error } = await supabase
     .from('waitlist')
     .upsert({ email, source: 'prelaunch' }, { onConflict: 'email', ignoreDuplicates: true })
+  if (error) {
+    console.error('[prelaunch/notify] waitlist upsert failed:', error.message)
+  }
 
   return NextResponse.redirect(new URL('/prelaunch?notify=ok', origin), { status: 303 })
 }

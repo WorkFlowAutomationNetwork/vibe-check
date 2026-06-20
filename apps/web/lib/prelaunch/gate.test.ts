@@ -44,6 +44,11 @@ describe('prelaunch gate primitives', () => {
     expect(constantTimeEqual('abc', 'abcd')).toBe(false)
   })
 
+  it('signToken with empty password returns the exact sentinel string', async () => {
+    const token = await signToken('')
+    expect(token).toBe('empty-password-invalid')
+  })
+
   it('verifyToken accepts a token signed with the same password', async () => {
     const token = await signToken('s3cret')
     expect(await verifyToken(token, 's3cret')).toBe(true)

@@ -42,6 +42,7 @@ function toHex(buf: ArrayBuffer): string {
 
 export async function signToken(password: string): Promise<string> {
   // Handle empty password: return a deterministic but invalid placeholder
+  // (diverges from reference: Web Crypto importKey throws DataError on zero-length key)
   if (!password) {
     return 'empty-password-invalid'
   }

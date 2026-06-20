@@ -55,4 +55,19 @@ describe('POST /api/prelaunch/notify', () => {
     const res = await POST(post('not-an-email'))
     expect(res.headers.get('location')).toContain('/prelaunch?notify=invalid')
   })
+
+  it('logs the upsert error server-side but still returns notify=ok (no enumeration)', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.client = {
+      from: () => ({
+        upsert: () => Promise.resolve({ error: { message: 'boom' } }),
+      }),
+    }
+    const { POST } = await import('./route')
+    const res = await POST(post('test@example.com'))
+    expect(res.status).toBe(303)
+    expect(res.headers.get('location')).toContain('/prelaunch?notify=ok')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('[prelaunch/notify] waitlist upsert failed:', 'boom')
+    consoleErrorSpy.mockRestore()
+  })
 })
