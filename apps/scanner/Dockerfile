@@ -18,6 +18,14 @@ RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@v3.9.0
 # ignore-list files, not the templates themselves).
 RUN "$GOBIN/nuclei" -update-templates
 
+# --- gitleaks (committed-secret scanning) ---
+# Pinned, not @latest — same rationale as Nuclei: an unpinned bump could
+# silently change flags and degrade the repo scan.
+FROM golang:1.25-bookworm AS gitleaks-build
+ENV GOBIN=/usr/local/go-bin
+RUN mkdir -p "$GOBIN"
+RUN go install github.com/gitleaks/gitleaks/v8@v8.21.2
+
 # --- Final stage ---
 FROM python:3.12-slim
 
@@ -27,7 +35,7 @@ WORKDIR /app
 # not bundled with the pip package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 libpangocairo-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
-    libffi8 shared-mime-info \
+    libffi8 shared-mime-info git \
     && rm -rf /var/lib/apt/lists/*
 
 # Nuclei binary + templates baked in at build time (see
@@ -37,6 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=nuclei-build /usr/local/go-bin/nuclei /usr/local/bin/nuclei
 COPY --from=nuclei-build /root/.config/nuclei /root/.config/nuclei
 COPY --from=nuclei-build /root/nuclei-templates /root/nuclei-templates
+COPY --from=gitleaks-build /usr/local/go-bin/gitleaks /usr/local/bin/gitleaks
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
