@@ -1,3 +1,5 @@
+import { NextResponse, type NextRequest } from 'next/server'
+
 export const COOKIE_NAME = 'vibe_prelaunch'
 const TOKEN_MARKER = 'vibe-check-prelaunch-v1'
 
@@ -58,4 +60,17 @@ export async function verifyToken(token: string | undefined, password: string): 
   if (!token || !password) return false
   const expected = await signToken(password)
   return constantTimeEqual(token, expected)
+}
+
+export async function prelaunchGate(request: NextRequest): Promise<NextResponse | null> {
+  if (!isLockEngaged()) return null
+  const { pathname } = request.nextUrl
+  if (isExemptPath(pathname)) return null
+
+  const token = request.cookies.get(COOKIE_NAME)?.value
+  if (await verifyToken(token, getConfiguredPassword())) return null
+
+  const url = request.nextUrl.clone()
+  url.pathname = '/prelaunch'
+  return NextResponse.rewrite(url)
 }

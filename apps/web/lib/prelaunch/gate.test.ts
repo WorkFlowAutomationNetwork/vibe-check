@@ -60,3 +60,53 @@ describe('prelaunch gate primitives', () => {
     expect(await verifyToken(undefined, 'x')).toBe(false)
   })
 })
+
+import { NextRequest } from 'next/server'
+import { prelaunchGate, signToken as sign } from './gate'
+
+describe('prelaunchGate(request)', () => {
+  beforeEach(() => {
+    delete process.env.PRELAUNCH_LOCK_ENABLED
+    delete process.env.PRELAUNCH_PASSWORD
+  })
+
+  function req(path: string, cookie?: string) {
+    const r = new NextRequest(new URL(`http://localhost${path}`))
+    if (cookie) r.cookies.set('vibe_prelaunch', cookie)
+    return r
+  }
+
+  it('returns null when the lock is off', async () => {
+    expect(await prelaunchGate(req('/dashboard'))).toBeNull()
+  })
+
+  it('rewrites to /prelaunch when locked with no cookie on a guarded path', async () => {
+    process.env.PRELAUNCH_LOCK_ENABLED = 'true'
+    process.env.PRELAUNCH_PASSWORD = 'pw'
+    const res = await prelaunchGate(req('/dashboard'))
+    expect(res).not.toBeNull()
+    expect(res!.headers.get('x-middleware-rewrite')).toContain('/prelaunch')
+  })
+
+  it('returns null for exempt paths even when locked', async () => {
+    process.env.PRELAUNCH_LOCK_ENABLED = 'true'
+    process.env.PRELAUNCH_PASSWORD = 'pw'
+    expect(await prelaunchGate(req('/api/billing/stripe-webhook'))).toBeNull()
+    expect(await prelaunchGate(req('/prelaunch'))).toBeNull()
+  })
+
+  it('returns null when locked with a valid cookie', async () => {
+    process.env.PRELAUNCH_LOCK_ENABLED = 'true'
+    process.env.PRELAUNCH_PASSWORD = 'pw'
+    const token = await sign('pw')
+    expect(await prelaunchGate(req('/dashboard', token))).toBeNull()
+  })
+
+  it('rewrites when locked with a stale cookie from an old password', async () => {
+    process.env.PRELAUNCH_LOCK_ENABLED = 'true'
+    process.env.PRELAUNCH_PASSWORD = 'new-pw'
+    const stale = await sign('old-pw')
+    const res = await prelaunchGate(req('/dashboard', stale))
+    expect(res!.headers.get('x-middleware-rewrite')).toContain('/prelaunch')
+  })
+})

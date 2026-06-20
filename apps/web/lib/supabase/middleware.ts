@@ -1,8 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { CookieOptions } from '@supabase/ssr'
+import { prelaunchGate } from '@/lib/prelaunch/gate'
 
 export async function updateSession(request: NextRequest) {
+  const gated = await prelaunchGate(request)
+  if (gated) return gated
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
