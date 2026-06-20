@@ -23,7 +23,7 @@ describe('Prelaunch gate page', () => {
   })
 
   it('shows a thank-you only when notify=ok', () => {
-    expect(render()).not.toContain("You're on the list")
-    expect(render({ notify: 'ok' })).toContain("You're on the list")
+    expect(render()).not.toContain('on the list')
+    expect(render({ notify: 'ok' })).toContain('on the list')
   })
 })

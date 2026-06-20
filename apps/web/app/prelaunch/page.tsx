@@ -46,10 +46,9 @@ export default function PrelaunchPage({ searchParams }: { searchParams: SearchPa
         <hr style={divider} />
 
         {searchParams.notify === 'ok' ? (
-          <p
-            style={{ color: 'var(--violet-deep)', margin: 0 }}
-            dangerouslySetInnerHTML={{ __html: "You're on the list — we'll email you at launch." }}
-          />
+          <p style={{ color: 'var(--violet-deep)', margin: 0 }}>
+            You're on the list — we'll email you at launch.
+          </p>
         ) : (
           <form action="/api/prelaunch/notify" method="post">
             <p style={{ color: 'var(--ink-soft)', marginTop: 0, fontSize: '14px' }}>Get notified when we launch</p>
