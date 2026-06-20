@@ -38,7 +38,7 @@ class GitHubSecretsScanner:
         self.base_sha = base_sha
         self.timeout = timeout
 
-    def _clone_url_for_log(self) -> str:
+    def safe_clone_url(self) -> str:
         """Clone URL with the token redacted, safe to log."""
         if not self.token:
             return self.clone_url
