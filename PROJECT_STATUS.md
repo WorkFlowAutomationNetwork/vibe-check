@@ -179,7 +179,17 @@ Honest claims that **are** backed: SSL/security headers, exposed endpoints (Supa
 
 ## Known code issues
 
-*(none currently open)*
+**Open — Plan C (repo report UI) review follow-ups** (all Minor; surfaced in the whole-branch
+review at merge `c0776f6`, none blocking):
+- **`act()` warning in `ScanRepoButton.test.tsx`** — the polling state update isn't wrapped in
+  `act(...)`, so the test run emits a React warning. Output should be pristine; wrap the timer
+  advance / state transition in `act()` (or `await waitFor`) to silence it.
+- **`repo_findings.description` fetched but never rendered** (`app/(app)/repos/[repoId]/page.tsx`)
+  — the column is in the `select` and the `RepoFinding` type but nothing renders it. Either render
+  it under the finding title or drop it from the select + type to keep the interface honest.
+- **Inline `style={{…}}` objects on the detail page** (`app/(app)/repos/[repoId]/page.tsx`) — panel
+  backgrounds, severity badges, and finding cards use inline styles (brief-prescribed) where the
+  rest of the app favours `app.css` classes. Extract to `app.css` for consistency with sibling pages.
 
 **Resolved 2026-06-20 — duplicate "No Supabase backend detected" finding** (`scanners/storage_exposure.py`). When an app has no Supabase backend, the table-exposure **and** storage-exposure scanners each emitted an identical `info` finding with the same title, so reports showed the row twice (caught while eyeballing merlin's deep-scan PDF). Fixed: the storage scanner now returns `[]` when no creds are found and lets the table scanner own the single note. New behaviour pinned by `test_storage_exposure.py`. Scanner suite 159 passed. **Deployed to Fly + re-validated live** — merlin active re-scan now shows exactly one such row (was two).
 
