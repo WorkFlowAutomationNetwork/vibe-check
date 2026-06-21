@@ -42,12 +42,15 @@ export default function GitHubCard({
               <div className="lbl">repos</div>
               <div className="val">
                 <div className="repo-list">
-                  {repos.filter(r => r.status === 'active').map(r => <span key={r.id}>{r.full_name}</span>)}
+                  {repos.filter(r => r.status === 'active').map(r => (
+                    <a key={r.id} href={`/repos/${r.id}`}>{r.full_name}</a>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
           <div className="int-actions">
+            <a className="btn btn-soft" href="/repos" style={{ padding: '8px 12px', fontSize: 13 }}>View repos →</a>
             <a className="btn btn-soft" href="/api/integrations/github/install" style={{ padding: '8px 12px', fontSize: 13 }}>Manage access</a>
             <form action="/api/integrations/github/disconnect" method="post">
               <input type="hidden" name="installation_id" value={installation!.installation_id} />

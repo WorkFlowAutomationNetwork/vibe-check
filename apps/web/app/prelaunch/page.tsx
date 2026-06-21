@@ -47,7 +47,7 @@ export default function PrelaunchPage({ searchParams }: { searchParams: SearchPa
 
         {searchParams.notify === 'ok' ? (
           <p style={{ color: 'var(--violet-deep)', margin: 0 }}>
-            You're on the list — we'll email you at launch.
+            You&apos;re on the list — we&apos;ll email you at launch.
           </p>
         ) : (
           <form action="/api/prelaunch/notify" method="post">

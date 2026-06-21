@@ -28,4 +28,15 @@ describe('GitHubCard', () => {
     expect(screen.getByText('me/app')).toBeInTheDocument()
     expect(screen.getByText(/connected/i)).toBeInTheDocument()
   })
+
+  it('links each repo to its report and offers a view-repos link', () => {
+    render(
+      <GitHubCard
+        installation={{ installation_id: 5, account_login: 'me', status: 'active' }}
+        repos={[{ id: 'r1', full_name: 'me/app', status: 'active' }]}
+      />,
+    )
+    expect(screen.getByRole('link', { name: 'me/app' })).toHaveAttribute('href', '/repos/r1')
+    expect(screen.getByRole('link', { name: /view repos/i })).toHaveAttribute('href', '/repos')
+  })
 })

@@ -130,7 +130,14 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      `run_repo_scan` task + internal `/api/repo-scans` + gitleaks in Dockerfile. **Plan written**
      (`docs/superpowers/plans/2026-06-20-github-integration-plan-b-scanner.md`, 9 TDD tasks);
      *execution in progress (subagent-driven).*
-   - **Plan C (report UI)** — `/repos` + `/repos/[repoId]`.
+   - **Plan C (report UI) — ✅ shipped 2026-06-21**: `/repos` list + `/repos/[repoId]`
+     committed-secret report, both server components with client islands. `ScanRepoButton`
+     ("Scan now" → POST `/api/repo-scans`, 3000ms polling, `router.refresh()` on terminal)
+     on list rows and detail; `RepoStatusPill` (Never scanned / Scanning… / Clean / {n}
+     secret(s) / Failed); `Repos` sidebar nav; GitHub `/integrations` card links into
+     `/repos`. No A–F grade — status is Clean vs `{n} secrets exposed`; Full history /
+     Incremental mode label; only redacted finding fields rendered; RLS-scoped queries +
+     `notFound()`. 112 web tests pass; production build clean. Whole-branch opus review: Ship.
    - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
