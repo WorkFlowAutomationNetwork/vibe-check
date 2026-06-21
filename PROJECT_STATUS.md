@@ -14,7 +14,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 
 ## Current phase
 
-> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. Badge issuance + activity-log writes are **live in production** (scanner issues 30-day badges on active/deep completion; scanner + web write the activity feed — Fly.io redeploy shipped 2026-06-18). **Blocking launch:** lawyer review of `/terms` + `/privacy`; homepage overstates capabilities (see mismatches below).
+> **Pre-launch.** All app pages built and wired to real Supabase data. Scanner deployed and live. Stripe checkout + subscription lifecycle verified end-to-end. Badge issuance + activity-log writes are **live in production** (scanner issues 30-day badges on active/deep completion; scanner + web write the activity feed — Fly.io redeploy shipped 2026-06-18). **Site is deployed to Vercel** (project `vibe-check-web`, team `wfan`) and live behind the **prelaunch coming-soon gate** (`vibe-check-app.com` now points at the app; `*.vercel.app` aliases also live). **Gate verified end-to-end 2026-06-21:** root serves coming-soon, notify form persists to `waitlist`, password unlock works. **Blocking launch:** lawyer review of `/terms` + `/privacy`; homepage overstates capabilities (see mismatches below).
 
 ---
 
@@ -23,7 +23,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 | Service | Status | Notes |
 |---|---|---|
 | Next.js (`apps/web`) | ✅ Live | Next 14 App Router, TS strict. Build clean. |
-| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 24 migrations applied. RLS on all tables. |
+| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 25 migrations applied (waitlist applied to prod 2026-06-21). RLS on all tables. |
 | Scanner (`apps/scanner`) | ✅ Deployed | `vibe-check-scanner.fly.dev`. FastAPI + Celery + Redis. ~142 tests passing. nuclei v3.9.0 pinned, 13k templates live. VM 2GB/2CPU, scan timeout 300s. |
 | Redis | ✅ Deployed | Fly.io managed (`vibe-check-redis`). |
 | Stripe | ✅ Wired | Test-mode products (`starter_one_off` $9, `monitor_monthly` $19/mo, by lookup_key). Checkout + portal + webhook all verified end-to-end. **Live keys/products not yet created.** |
@@ -35,7 +35,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 
 ## Database (key facts)
 
-- 24 migrations applied (`supabase/migrations/`). All tables RLS-enabled; scanner uses service-role key (bypasses RLS).
+- 25 migrations applied (`supabase/migrations/`). All tables RLS-enabled; scanner uses service-role key (bypasses RLS). `waitlist` table (prelaunch notify capture) applied to prod 2026-06-21.
 - `profiles.plan` = `free|starter|monitor`; `is_admin` bool; `stripe_subscription_status` mirrors Stripe. Migration 017 trigger blocks client-side edits to `is_admin`/`plan`/`stripe_*` (privilege-escalation fix).
 - `scans.scan_type` — **not** `.type`.
 - `plan_limits` (3 rows) + guard fns (`can_run_scan_type`, `can_add_url`) enforce limits at RLS layer; admins bypass. Starter is a **persistent unlock** (passive+active), not a single-use credit.
@@ -126,10 +126,12 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      pass; production build clean. **Not live** until `vibe-check-app.com` is pointed at the
      deployed app and the six `GITHUB_*` env vars are set (GitHub App `vibe-check-app`
      created; user wiring domain→Vercel next).
-   - **Plan B (scanner)** — token minting + `GitHubSecretsScanner` (gitleaks + redaction) +
-     `run_repo_scan` task + internal `/api/repo-scans` + gitleaks in Dockerfile. **Plan written**
-     (`docs/superpowers/plans/2026-06-20-github-integration-plan-b-scanner.md`, 9 TDD tasks);
-     *execution in progress (subagent-driven).*
+   - **Plan B (scanner) — ✅ code-complete** (verified 2026-06-21): `GitHubSecretsScanner`
+     (`scanners/github_secrets.py` + `github_secrets_rules.py`), `run_repo_scan` task
+     (`jobs/tasks.py:215`), internal `/api/repo-scans` route (+ tests), and gitleaks pinned
+     in the Dockerfile (`v8.21.2`, multi-stage build). **Not yet validated end-to-end against a
+     real repo, and Fly redeploy carrying gitleaks + `GITHUB_*` env not confirmed live** — that's
+     the remaining GitHub go-live work.
    - **Plan C (report UI) — ✅ shipped 2026-06-21**: `/repos` list + `/repos/[repoId]`
      committed-secret report, both server components with client islands. `ScanRepoButton`
      ("Scan now" → POST `/api/repo-scans`, 3000ms polling, `router.refresh()` on terminal)
