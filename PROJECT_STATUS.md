@@ -140,6 +140,19 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      `/repos`. No A–F grade — status is Clean vs `{n} secrets exposed`; Full history /
      Incremental mode label; only redacted finding fields rendered; RLS-scoped queries +
      `notFound()`. 112 web tests pass; production build clean. Whole-branch opus review: Ship.
+   - **Connect-flow hardening — 2026-06-22** (`7693960`, `5cfdadb`, `c7cf63e`): live testing
+     surfaced that the install→callback path never recorded the installation. Root cause:
+     GitHub's post-install redirect carries `installation_id` but **not** our `state`, and for
+     already-installed users `installations/new` dead-ends on the configure page (Save
+     redirects nowhere). Fixes: (a) round-trip the signed `state` via an httpOnly cookie
+     instead of the query; (b) **enter via the OAuth authorize URL** (always redirects back
+     with `code`), callback exchanges code → app-scoped user token → `GET /user/installations`
+     → records each installation + repos (handles new, returning, and already-installed users);
+     (c) disconnect now calls `DELETE /app/installations/{id}` for a **true revoke** with an
+     ownership check (IDOR guard); (d) Connect/Manage-access open in a new tab; (e)
+     `/api/integrations` exempted from the prelaunch gate. **Needs `GITHUB_APP_CLIENT_ID` set
+     in Vercel** (previously unused). 118 web tests pass. End-to-end secret-scan validation
+     still pending.
    - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
@@ -258,3 +271,4 @@ docs/superpowers/{specs,plans}/    ← dated specs + plans for scanner work
 - embedded or whatever for billing from stripe?
 - need better revenue reporting ie should try and closely clone Stripe so I dont have to open it
 - when connecting github needs to opena  new window rather than leaving the current one. Have connected and has read access but connection in app hasn't moved from 'Not connected'
+- enusre im comfortable with the actual sign up flow
