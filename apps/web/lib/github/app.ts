@@ -74,8 +74,15 @@ export async function exchangeCodeForUserToken(code: string): Promise<string> {
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
   })
-  const data = (await res.json()) as { access_token?: string }
-  if (!data.access_token) throw new Error('GitHub OAuth token exchange failed')
+  const data = (await res.json()) as {
+    access_token?: string
+    error?: string
+    error_description?: string
+  }
+  if (!data.access_token) {
+    const detail = data.error_description ?? data.error ?? `http ${res.status}`
+    throw new Error(`GitHub OAuth token exchange failed: ${detail}`)
+  }
   return data.access_token
 }
 
