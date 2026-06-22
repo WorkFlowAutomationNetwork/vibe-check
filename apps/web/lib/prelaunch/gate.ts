@@ -10,6 +10,7 @@ const EXEMPT_PREFIXES = [
   '/api/webhooks',
   '/api/scans',
   '/api/repo-scans',
+  '/api/integrations',
   '/api/auth',
   '/auth',
 ]

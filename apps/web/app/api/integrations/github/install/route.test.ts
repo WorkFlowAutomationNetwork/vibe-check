@@ -7,6 +7,8 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/github/app', () => ({
   signState: () => 'signed-state',
   buildInstallUrl: (s: string) => `https://github.com/apps/vibe-check/installations/new?state=${s}`,
+  STATE_COOKIE_NAME: 'vibe_gh_state',
+  STATE_COOKIE_MAX_AGE: 600,
 }))
 
 beforeEach(() => vi.clearAllMocks())
@@ -18,6 +20,10 @@ describe('GET /api/integrations/github/install', () => {
     const res = await GET()
     expect(res.status).toBe(302)
     expect(res.headers.get('location')).toContain('installations/new?state=signed-state')
+    // state is stashed in an httpOnly cookie for the callback to read back
+    const setCookie = res.headers.get('set-cookie') ?? ''
+    expect(setCookie).toContain('vibe_gh_state=signed-state')
+    expect(setCookie.toLowerCase()).toContain('httponly')
   })
 
   it('401s an unauthenticated user', async () => {

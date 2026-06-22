@@ -5,6 +5,13 @@ import { verify as verifyWebhookSig } from '@octokit/webhooks-methods'
 
 const STATE_TTL_MS = 10 * 60 * 1000 // 10 minutes
 
+// GitHub only returns `installation_id` on the post-install Setup URL redirect —
+// it does NOT echo back the `state` query param. So we round-trip the signed
+// state ourselves via an httpOnly cookie set at install time and read at callback
+// time. This preserves CSRF protection without depending on GitHub's redirect.
+export const STATE_COOKIE_NAME = 'vibe_gh_state'
+export const STATE_COOKIE_MAX_AGE = 600 // seconds; matches STATE_TTL_MS
+
 function stateSecret(): string {
   const s = process.env.GITHUB_APP_CLIENT_SECRET
   if (!s) throw new Error('GITHUB_APP_CLIENT_SECRET is not set')
