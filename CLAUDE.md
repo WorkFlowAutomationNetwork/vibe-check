@@ -457,6 +457,15 @@ For bugfixes, start with **systematic-debugging**. Before claiming anything is d
 
 The landing page (`app/(marketing)/page.tsx`) was converted from a pre-build design mock and still advertises capabilities the scanner does **not** implement (prompt-injection testing, IDOR/auth-bypass probing, dependency-CVE feed cross-check, "180 checks", "no account" free scan, a 30-day auto-issued badge). Treat marketing copy as **aspirational, not a spec**. Before launch, reconcile the homepage and the billing comparison table against what the scanner actually does (see `PROJECT_STATUS.md` → "Marketing/product mismatches"). Do not cite landing-page copy as evidence a feature exists.
 
+---
+
+## Frequently-read files
+
+- `PROJECT_STATUS.md` — living record of what's built, wired, broken, and next; already covered above under "Project status," but flagged here because it's the single most-read file in the project.
+- `.superpowers/sdd/progress.md` — subagent-driven-development ledger for the in-progress branch; tracks task-by-task completion, review verdicts, and deferred minor findings.
+- `apps/scanner/jobs/tasks.py` — Celery task definitions wiring the scan job together: consent checks, the scanner battery (headers, TLS, Supabase/storage exposure, secrets, rate limit, Nuclei, GitHub secrets), grading, PDF rendering, and badge issuance.
+- `apps/scanner/tests/test_nuclei.py` — regression tests for the Nuclei scanner wrapper, covering match-to-finding conversion and JSONL parsing.
+
 
 
 

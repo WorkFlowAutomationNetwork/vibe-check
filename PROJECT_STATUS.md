@@ -248,3 +248,13 @@ supabase/migrations/               ← 24 migrations (applied)
 design/                            ← HTML UI references (source of truth for component structure)
 docs/superpowers/{specs,plans}/    ← dated specs + plans for scanner work
 ```
+
+
+## Identified Extras:
+- add a extra section on the overview that shows recent github/ vercel scans - greyed out if not subscribed
+- Recent activity - each scan should have its own report. They can view the results of that specific scan. 
+- Alert for badge renewal - encourages more usage. 
+- check badge page - href tag has local host is that correct
+- embedded or whatever for billing from stripe?
+- need better revenue reporting ie should try and closely clone Stripe so I dont have to open it
+- when connecting github needs to opena  new window rather than leaving the current one. Have connected and has read access but connection in app hasn't moved from 'Not connected'
