@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { deleteInstallation } from '@/lib/github/app'
 
 const Schema = z.object({ installation_id: z.coerce.number().int().positive() })
 
@@ -25,6 +26,30 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'installation_id required' }, { status: 422 })
 
   const service = createServiceClient()
+
+  // Verify the installation belongs to this user BEFORE touching GitHub —
+  // deleteInstallation() uses the app JWT (authority over every installation),
+  // so without this an authed user could uninstall someone else's by ID (IDOR).
+  const { data: owned } = await service
+    .from('github_installations')
+    .select('installation_id')
+    .eq('user_id', user.id)
+    .eq('installation_id', parsed.data.installation_id)
+    .maybeSingle()
+
+  if (!owned) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // Best-effort: actually uninstall the app so read access is revoked, not just
+  // hidden. If GitHub is unreachable we still revoke locally below; the webhook
+  // reconciles if the user later uninstalls from GitHub directly.
+  try {
+    await deleteInstallation(parsed.data.installation_id)
+  } catch {
+    // swallow — local revoke still applies
+  }
+
   await service
     .from('github_installations')
     .update({ status: 'revoked' })

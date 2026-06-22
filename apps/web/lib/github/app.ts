@@ -62,13 +62,28 @@ export async function verifyWebhook(rawBody: string, signature: string | null): 
   }
 }
 
-async function installationToken(installationId: number): Promise<string> {
+function appAuth() {
   const appId = process.env.GITHUB_APP_ID
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY
   if (!appId || !privateKey) throw new Error('GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY not set')
-  const auth = createAppAuth({ appId, privateKey: privateKey.replace(/\\n/g, '\n') })
-  const { token } = await auth({ type: 'installation', installationId })
+  return createAppAuth({ appId, privateKey: privateKey.replace(/\\n/g, '\n') })
+}
+
+async function installationToken(installationId: number): Promise<string> {
+  const { token } = await appAuth()({ type: 'installation', installationId })
   return token
+}
+
+// Uninstalls the GitHub App from the account, fully revoking its access.
+// Authenticated with the app JWT (authority over all of this app's
+// installations), so callers MUST verify the installation belongs to the
+// requesting user before invoking this.
+export async function deleteInstallation(installationId: number): Promise<void> {
+  const { token } = await appAuth()({ type: 'app' })
+  await request('DELETE /app/installations/{installation_id}', {
+    installation_id: installationId,
+    headers: { authorization: `Bearer ${token}` },
+  })
 }
 
 export async function listInstallationRepos(
