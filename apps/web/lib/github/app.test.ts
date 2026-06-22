@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 beforeEach(() => {
   process.env.GITHUB_APP_CLIENT_SECRET = 'test-state-secret'
   process.env.GITHUB_APP_SLUG = 'vibe-check'
+  process.env.GITHUB_APP_CLIENT_ID = 'Iv1.testclientid'
   process.env.GITHUB_WEBHOOK_SECRET = 'test-webhook-secret'
   vi.resetModules()
 })
@@ -35,6 +36,16 @@ describe('buildInstallUrl', () => {
     const { buildInstallUrl } = await import('./app')
     const url = buildInstallUrl('the-state')
     expect(url).toBe('https://github.com/apps/vibe-check/installations/new?state=the-state')
+  })
+})
+
+describe('buildAuthorizeUrl', () => {
+  it('points at the OAuth authorize endpoint with client_id and state', async () => {
+    const { buildAuthorizeUrl } = await import('./app')
+    const url = buildAuthorizeUrl('the-state')
+    expect(url).toBe(
+      'https://github.com/login/oauth/authorize?client_id=Iv1.testclientid&state=the-state',
+    )
   })
 })
 

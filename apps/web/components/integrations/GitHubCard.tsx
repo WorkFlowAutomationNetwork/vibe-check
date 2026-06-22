@@ -51,7 +51,7 @@ export default function GitHubCard({
           </div>
           <div className="int-actions">
             <a className="btn btn-soft" href="/repos" style={{ padding: '8px 12px', fontSize: 13 }}>View repos →</a>
-            <a className="btn btn-soft" href="/api/integrations/github/install" style={{ padding: '8px 12px', fontSize: 13 }}>Manage access</a>
+            <a className="btn btn-soft" href="/api/integrations/github/install" target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', fontSize: 13 }}>Manage access</a>
             <form action="/api/integrations/github/disconnect" method="post">
               <input type="hidden" name="installation_id" value={installation!.installation_id} />
               <button className="btn btn-soft" style={{ padding: '8px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>Disconnect</button>
@@ -60,7 +60,7 @@ export default function GitHubCard({
         </>
       ) : (
         <div className="int-actions">
-          <a className="btn btn-primary" href="/api/integrations/github/install" style={{ padding: '8px 12px', fontSize: 13 }}>Connect GitHub</a>
+          <a className="btn btn-primary" href="/api/integrations/github/install" target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', fontSize: 13 }}>Connect GitHub</a>
         </div>
       )}
 

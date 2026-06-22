@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/github/app', () => ({
   signState: () => 'signed-state',
-  buildInstallUrl: (s: string) => `https://github.com/apps/vibe-check/installations/new?state=${s}`,
+  buildAuthorizeUrl: (s: string) => `https://github.com/login/oauth/authorize?client_id=Iv1.x&state=${s}`,
   STATE_COOKIE_NAME: 'vibe_gh_state',
   STATE_COOKIE_MAX_AGE: 600,
 }))
@@ -14,12 +14,12 @@ vi.mock('@/lib/github/app', () => ({
 beforeEach(() => vi.clearAllMocks())
 
 describe('GET /api/integrations/github/install', () => {
-  it('redirects an authed user to the install URL', async () => {
+  it('redirects an authed user to the OAuth authorize URL', async () => {
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
     const { GET } = await import('./route')
     const res = await GET()
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toContain('installations/new?state=signed-state')
+    expect(res.headers.get('location')).toContain('login/oauth/authorize?client_id=Iv1.x&state=signed-state')
     // state is stashed in an httpOnly cookie for the callback to read back
     const setCookie = res.headers.get('set-cookie') ?? ''
     expect(setCookie).toContain('vibe_gh_state=signed-state')

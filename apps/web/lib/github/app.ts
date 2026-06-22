@@ -51,6 +51,59 @@ export function buildInstallUrl(state: string): string {
   return `https://github.com/apps/${slug}/installations/new?state=${state}`
 }
 
+// The OAuth user-authorization URL. Unlike installations/new, this ALWAYS
+// redirects back to our callback with `code` + `state`, whether or not the app
+// is already installed — so it works for both new and returning users.
+export function buildAuthorizeUrl(state: string): string {
+  const clientId = process.env.GITHUB_APP_CLIENT_ID
+  if (!clientId) throw new Error('GITHUB_APP_CLIENT_ID is not set')
+  return `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}`
+}
+
+// Exchanges the OAuth `code` for a user-to-server access token. The token is
+// scoped to this app, so /user/installations returns only this app's
+// installations the user can access.
+export async function exchangeCodeForUserToken(code: string): Promise<string> {
+  const clientId = process.env.GITHUB_APP_CLIENT_ID
+  const clientSecret = process.env.GITHUB_APP_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    throw new Error('GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET not set')
+  }
+  const res = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+  })
+  const data = (await res.json()) as { access_token?: string }
+  if (!data.access_token) throw new Error('GitHub OAuth token exchange failed')
+  return data.access_token
+}
+
+// Lists the installations of THIS app that the authorized user can access.
+export async function listUserInstallations(
+  userToken: string,
+): Promise<Array<{ installation_id: number; account_login: string; account_type: string }>> {
+  const out: Array<{ installation_id: number; account_login: string; account_type: string }> = []
+  let page = 1
+  for (;;) {
+    const res = await request('GET /user/installations', {
+      headers: { authorization: `token ${userToken}` },
+      per_page: 100,
+      page,
+    })
+    for (const inst of res.data.installations) {
+      out.push({
+        installation_id: inst.id,
+        account_login: inst.account && 'login' in inst.account ? inst.account.login : 'unknown',
+        account_type: inst.account && 'type' in inst.account ? inst.account.type : 'User',
+      })
+    }
+    if (res.data.installations.length < 100) break
+    page += 1
+  }
+  return out
+}
+
 export async function verifyWebhook(rawBody: string, signature: string | null): Promise<boolean> {
   if (!signature) return false
   const secret = process.env.GITHUB_WEBHOOK_SECRET
