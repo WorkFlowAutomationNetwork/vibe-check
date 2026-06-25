@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 
 const EnqueueSchema = z.object({ repo_id: z.string().uuid() })
 
@@ -62,7 +62,10 @@ export async function POST(request: Request) {
 
   const mode = repo.last_scanned_sha ? 'incremental' : 'full'
 
-  const { data: scan, error: insertError } = await supabase
+  // repo_scans has no client-side INSERT/DELETE policy (service-role-only writes,
+  // matching the urls/scans/findings pattern) — use the service client here.
+  const serviceClient = createServiceClient()
+  const { data: scan, error: insertError } = await serviceClient
     .from('repo_scans')
     .insert({
       repo_id,
@@ -85,7 +88,7 @@ export async function POST(request: Request) {
   })
 
   if (!dispatched) {
-    await supabase.from('repo_scans').delete().eq('id', scan.id)
+    await serviceClient.from('repo_scans').delete().eq('id', scan.id)
     return NextResponse.json({ error: 'Scanner service unavailable' }, { status: 502 })
   }
 

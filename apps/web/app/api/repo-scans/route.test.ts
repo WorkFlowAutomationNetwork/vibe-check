@@ -4,6 +4,7 @@ const state: any = {}
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerClient: () => state.client,
+  createServiceClient: () => state.serviceClient ?? state.client,
 }))
 
 function makeClient(over: any = {}) {
