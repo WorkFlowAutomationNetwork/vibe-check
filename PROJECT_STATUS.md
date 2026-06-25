@@ -177,6 +177,19 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      gitleaks allowlists that exact placeholder by default to suppress the most common false
      positive. **GitHub committed-secret scanning (Plans A/B/C) is now fully live in production,
      end to end.**
+   - **✅ Finding actionability + landing stats — 2026-06-25** (`501a3b0`, migrations
+     `20260625000025`/`20260625000026` applied to prod). Each finding now carries a
+     best-effort `variable_name` (parsed from gitleaks' `Match` field, never the secret
+     itself), a `still_live` flag (secret present at HEAD vs. history-only — changes
+     remediation urgency), and **per-provider remediation** (Stripe/AWS/GitHub/OpenAI/GCP/
+     Supabase/Slack/SendGrid/Twilio/Mailchimp get a specific rotation path instead of one
+     generic line) — aimed at making a report copy-pasteable straight into an AI coding
+     agent (Claude/Codex/Lovable) to action. `get_landing_stats` RPC extended with
+     `repo_scans_run` (count of completed repo scans, not distinct repos) and
+     `secrets_found` (total findings, all-time); landing page renders both as new pills.
+     194 scanner tests + 118 web tests pass; web build clean. Verified against live data:
+     RPC returns `repo_scans_run: 1, secrets_found: 3` matching today's real
+     `business-website` scan.
    - Remaining: Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
