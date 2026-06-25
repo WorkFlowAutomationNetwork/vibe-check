@@ -4,9 +4,11 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 
-def _fake_run_factory(head_sha, is_ancestor_ok, gitleaks_json, written):
+def _fake_run_factory(head_sha, is_ancestor_ok, gitleaks_json, written, head_file_contents=None):
     """Returns a fake subprocess.run that records gitleaks args and writes the
     report file the scanner will read back."""
+    head_file_contents = head_file_contents or {}
+
     def fake_run(cmd, *args, **kwargs):
         if cmd[0] == "git" and cmd[1] == "clone":
             return MagicMock(returncode=0)
@@ -14,6 +16,11 @@ def _fake_run_factory(head_sha, is_ancestor_ok, gitleaks_json, written):
             return MagicMock(returncode=0, stdout=head_sha + "\n")
         if cmd[:2] == ["git", "merge-base"]:
             return MagicMock(returncode=0 if is_ancestor_ok else 1)
+        if cmd[:2] == ["git", "show"]:
+            path = cmd[2].split(":", 1)[1]
+            if path in head_file_contents:
+                return MagicMock(returncode=0, stdout=head_file_contents[path])
+            return MagicMock(returncode=128, stdout="")
         if cmd[0] == "gitleaks":
             written.append(cmd)
             # find --report-path value and write the json there
@@ -49,6 +56,38 @@ def test_full_scan_parses_redacted_findings():
     # no --log-opts on a full scan
     assert all("--log-opts" not in " ".join(c) for c in written)
     rmtree.assert_called_once()  # clone cleaned up
+
+
+def test_still_live_true_when_secret_present_at_head():
+    from scanners.github_secrets import GitHubSecretsScanner
+    written = []
+    fake = _fake_run_factory(
+        "HEADSHA", True, GITLEAKS_ONE, written,
+        head_file_contents={".env": "sk_live_RAWSECRETVALUE\n"},
+    )
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake), \
+         patch("scanners.github_secrets.shutil.rmtree"):
+        res = GitHubSecretsScanner(
+            clone_url="https://x-access-token:ghs_t@github.com/o/r.git",
+            token="ghs_t",
+        ).run()
+    assert res.findings[0]["still_live"] is True
+
+
+def test_still_live_false_when_secret_absent_at_head():
+    from scanners.github_secrets import GitHubSecretsScanner
+    written = []
+    fake = _fake_run_factory(
+        "HEADSHA", True, GITLEAKS_ONE, written,
+        head_file_contents={".env": "this file no longer has the secret\n"},
+    )
+    with patch("scanners.github_secrets.subprocess.run", side_effect=fake), \
+         patch("scanners.github_secrets.shutil.rmtree"):
+        res = GitHubSecretsScanner(
+            clone_url="https://x-access-token:ghs_t@github.com/o/r.git",
+            token="ghs_t",
+        ).run()
+    assert res.findings[0]["still_live"] is False
 
 
 def test_incremental_scan_uses_log_opts():

@@ -4,6 +4,8 @@ export interface LandingStats {
   scansRun: number
   sitesChecked: number
   avgVulns: number
+  repoScansRun: number
+  secretsFound: number
 }
 
 /**
@@ -23,12 +25,16 @@ export async function getLandingStats(): Promise<LandingStats | null> {
       scans_run: number
       sites_checked: number
       avg_vulns: number
+      repo_scans_run: number
+      secrets_found: number
     }>()
     if (error || !data) return null
     return {
       scansRun: Number(data.scans_run),
       sitesChecked: Number(data.sites_checked),
       avgVulns: Number(data.avg_vulns),
+      repoScansRun: Number(data.repo_scans_run),
+      secretsFound: Number(data.secrets_found),
     }
   } catch {
     return null

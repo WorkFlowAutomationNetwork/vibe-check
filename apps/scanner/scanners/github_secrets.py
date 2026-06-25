@@ -53,6 +53,14 @@ class GitHubSecretsScanner:
             cmd, capture_output=True, text=True, timeout=self.timeout, cwd=cwd
         )
 
+    def _still_live(self, clone_dir: str, file_path: str | None, secret: str | None) -> bool:
+        """Whether `secret` still appears in `file_path` as of HEAD (vs. only
+        in older history) — changes the remediation urgency."""
+        if not file_path or not secret:
+            return False
+        result = self._run(["git", "show", f"HEAD:{file_path}"], cwd=clone_dir)
+        return result.returncode == 0 and secret in (result.stdout or "")
+
     def run(self) -> RepoScanResult:
         workdir = tempfile.mkdtemp(prefix="repo-scan-")
         clone_dir = os.path.join(workdir, "repo")
@@ -98,7 +106,15 @@ class GitHubSecretsScanner:
             if os.path.exists(report_path):
                 with open(report_path) as f:
                     raw = json.load(f) or []
-                findings = [redact_finding(item) for item in raw]
+                findings = [
+                    redact_finding(
+                        item,
+                        still_live=self._still_live(
+                            clone_dir, item.get("File"), item.get("Secret")
+                        ),
+                    )
+                    for item in raw
+                ]
 
             return RepoScanResult(
                 mode=mode,

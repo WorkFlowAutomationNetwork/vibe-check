@@ -18,6 +18,8 @@ export default async function LandingPage() {
   const scansRun = stats ? stats.scansRun.toLocaleString('en-US') : '2,431'
   const sitesChecked = stats ? stats.sitesChecked.toLocaleString('en-US') : '2,431'
   const avgVulns = stats ? stats.avgVulns.toFixed(1) : '6.2'
+  const repoScansRun = stats ? stats.repoScansRun.toLocaleString('en-US') : '0'
+  const secretsFound = stats ? stats.secretsFound.toLocaleString('en-US') : '0'
 
   return (
     <>
@@ -70,6 +72,8 @@ export default async function LandingPage() {
           <div className="pills">
             <div className="pill"><span className="pillIcon">↑</span><b>{scansRun}</b> scans run</div>
             <div className="pill"><span className="pillIcon">!</span> avg <b>{avgVulns}</b> vulnerabilities found</div>
+            <div className="pill"><span className="pillIcon">⎇</span><b>{repoScansRun}</b> repo scans run</div>
+            <div className="pill"><span className="pillIcon">🔑</span><b>{secretsFound}</b> secrets caught</div>
             <div className="pill"><span className="pillIcon">~</span> takes <b>60s</b> end-to-end</div>
             <div className="pill"><span className="pillIcon">$</span> from <b>$0</b>, no card needed</div>
           </div>

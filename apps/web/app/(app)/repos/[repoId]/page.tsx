@@ -29,6 +29,8 @@ interface RepoFinding {
   commit_sha: string | null
   line_start: number | null
   match_preview: string | null
+  variable_name: string | null
+  still_live: boolean
   commit_author: string | null
   committed_at: string | null
   remediation: string | null
@@ -83,7 +85,7 @@ export default async function RepoReportPage({ params }: Props) {
   const { data: findingsData } = latestCompleted
     ? await supabase
         .from('repo_findings')
-        .select('id, rule_id, severity, title, description, file_path, commit_sha, line_start, match_preview, commit_author, committed_at, remediation')
+        .select('id, rule_id, severity, title, description, file_path, commit_sha, line_start, match_preview, variable_name, still_live, commit_author, committed_at, remediation')
         .eq('repo_scan_id', latestCompleted.id)
         .eq('user_id', user.id)
     : { data: [] }
@@ -165,10 +167,22 @@ export default async function RepoReportPage({ params }: Props) {
                   <h2 className="section-label" style={{ color: SEV_COLOR[sev] }}>{SEV_LABEL[sev]} ({group.length})</h2>
                   {group.map(f => (
                     <div key={f.id} style={{ background: 'var(--bg-card)', border: '1.5px solid var(--line)', borderRadius: 'var(--radius)', padding: '16px 20px', marginBottom: 12 }}>
-                      <div style={{ fontWeight: 600 }}>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {f.title}{' '}
                         <span style={{ color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{f.rule_id}</span>
+                        <span style={{
+                          fontFamily: 'var(--font-mono)', fontSize: 11, padding: '2px 7px', borderRadius: 'var(--radius-sm)',
+                          color: f.still_live ? 'var(--danger)' : 'var(--ink-mute)',
+                          border: `1px solid ${f.still_live ? 'var(--danger)' : 'var(--line)'}`,
+                        }}>
+                          {f.still_live ? 'still in latest code' : 'history only'}
+                        </span>
                       </div>
+                      {f.variable_name && (
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginTop: 6 }}>
+                          var: <b>{f.variable_name}</b>
+                        </div>
+                      )}
                       {f.match_preview && (
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, margin: '8px 0', color: 'var(--ink-soft)' }}>{f.match_preview}</div>
                       )}
