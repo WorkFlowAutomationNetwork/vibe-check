@@ -274,6 +274,15 @@ headers" noise). New regression tests in `tests/test_nuclei.py`. Scanner suite 1
 
 - **Reprice?** Suggested Starter $29–49, Monitor $39–49/mo (current $9/$19 likely undersells; $19/mo Monitor ≈ $228/yr/customer is thin unit economics). A/B the landing price. Not yet acted on.
 - **Onboarding rework?** Consider decoupling the free scan from sign-up: sign up → short "how it works" walkthrough → verify → then run the free scan, rather than forcing URL entry + scan during onboarding.
+- **Post-launch idea: pre-emptive (PR-time) secret scanning as an ultra-premium tier.**
+  Current GitHub committed-secret scanning is reactive — it finds secrets already in
+  history. A "shift-left" option: listen for the GitHub `pull_request` webhook (plumbing
+  already exists via the GitHub App), scan just the diff, and post a GitHub Check
+  (pass/fail) on the PR so a secret is caught **before** it merges to main, with zero
+  local install required. True pre-commit prevention (stopping it before it leaves the
+  dev's machine) would need a separate local hook/CLI install — different distribution
+  model, more friction, parked as a stretch goal beyond this. Not started; revisit after
+  launch.
 
 ---
 
