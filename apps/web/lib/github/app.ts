@@ -102,7 +102,10 @@ export async function listUserInstallations(
       out.push({
         installation_id: inst.id,
         account_login: inst.account && 'login' in inst.account ? inst.account.login : 'unknown',
-        account_type: inst.account && 'type' in inst.account ? inst.account.type : 'User',
+        account_type:
+          inst.account && 'type' in inst.account && inst.account.type === 'Organization'
+            ? 'org'
+            : 'user',
       })
     }
     if (res.data.installations.length < 100) break
