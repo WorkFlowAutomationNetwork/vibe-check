@@ -24,7 +24,7 @@ RUN "$GOBIN/nuclei" -update-templates
 FROM golang:1.25-bookworm AS gitleaks-build
 ENV GOBIN=/usr/local/go-bin
 RUN mkdir -p "$GOBIN"
-RUN go install github.com/gitleaks/gitleaks/v8@v8.21.2
+RUN go install github.com/zricethezav/gitleaks/v8@v8.21.2
 
 # --- Final stage ---
 FROM python:3.12-slim
