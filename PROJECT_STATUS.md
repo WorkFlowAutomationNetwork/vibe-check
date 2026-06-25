@@ -29,7 +29,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 | Stripe | ✅ Wired | Test-mode products (`starter_one_off` $9, `monitor_monthly` $19/mo, by lookup_key). Checkout + portal + webhook all verified end-to-end. **Live keys/products not yet created.** |
 | Resend (email) | ❌ Not wired | Key env var exists; no send calls anywhere. |
 
-> **Note:** the 2026-06-17 Fly.io redeploy shipped all scanner work (tech-disclosure, secrets, Supabase/Storage exposure, rate-limit, PDF, Nuclei). The many "⚠️ redeploy required" notes from earlier are **resolved** — everything below is live unless stated otherwise.
+> **Note:** the 2026-06-17 Fly.io redeploy shipped all scanner work through that date (tech-disclosure, secrets, Supabase/Storage exposure, rate-limit, PDF, Nuclei). The scanner then went **5 days without a redeploy** (last deploy 2026-06-20, v13) while Plan B (GitHub committed-secret scanning) landed in the repo — so the live instance silently lacked the `/api/repo-scans` route and gitleaks entirely until the 2026-06-25 redeploy (`67417b4`) caught it up. Lesson: code being "complete" in git ≠ live; check `fly releases` against the latest scanner-touching commit before assuming.
 
 ---
 
@@ -157,15 +157,27 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      `gh_error=1` bounce: GitHub's `/user/installations` returns `account.type` as
      `'User'`/`'Organization'`, but `github_installations_account_type_check` only allows
      `'user'`/`'org'` — every live upsert hit the constraint and threw. Fixed by normalizing
-     the value in `lib/github/app.ts::listUserInstallations`. (`NEXT_PUBLIC_APP_URL` localhost
-     issue from the 2026-06-22 resume note was already resolved by then — callback redirects
-     landed on prod correctly.) **Connect verified live — card shows Connected.** 118 web tests
-     pass. **NEXT: run the AWS-test-key secret-scan validation** (Plan B code-complete since
-     2026-06-21 but never validated against a real repo) — connect a repo with a planted dummy
-     AWS key, trigger a scan from `/repos`, confirm `GitHubSecretsScanner` + gitleaks find it and
-     the report renders correctly. Also confirm the Fly redeploy carrying gitleaks +
-     `GITHUB_*` env is actually live (noted as unconfirmed in Plan B).
-   - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
+     the value in `lib/github/app.ts::listUserInstallations`.
+   - **✅ Repo-scan enqueue + dispatch fixed — 2026-06-25** (`d6248d4`). "Scan now" 500'd:
+     `repo_scans` has no client-side INSERT/DELETE policy (service-role-only writes, per the
+     migration's own comment) but the route inserted via the user-scoped client. Fixed by
+     using `createServiceClient()` for the insert/delete in `app/api/repo-scans/route.ts`.
+   - **✅ Scanner-side go-live — 2026-06-25** (`67417b4`, scanner Fly deploy). The Fly image
+     hadn't been rebuilt since 2026-06-20, so the live instance predated Plan B entirely —
+     `/api/repo-scans` 404'd and gitleaks wasn't installed. Root cause of the *build* failure
+     once attempted: gitleaks' GitHub repo was renamed to `gitleaks/gitleaks`, but its `go.mod`
+     still declares the module path as the original `zricethezav/gitleaks/v8` — `go install`
+     must target that path. Fixed the Dockerfile, set `GITHUB_APP_ID` +
+     `GITHUB_APP_PRIVATE_KEY` as Fly secrets (previously absent), redeployed successfully.
+   - **✅ End-to-end validated live — 2026-06-25.** Connected `WorkFlowAutomationNetwork/business-website`,
+     ran a full-history scan from `/repos`, got back 3 real `medium` committed-secret findings
+     (Resend API key, GCP/Firebase API key, a generic API key — all genuinely exposed in that
+     repo's history since mid-2025, unrelated to Vibe-Check). Report UI rendered correctly.
+     Note: a planted AWS-docs example key (`AKIAIOSFODNN7EXAMPLE`) was *not* flagged — expected,
+     gitleaks allowlists that exact placeholder by default to suppress the most common false
+     positive. **GitHub committed-secret scanning (Plans A/B/C) is now fully live in production,
+     end to end.**
+   - Remaining: Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
    state, invoices, and subscription lifecycle.
