@@ -153,28 +153,18 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      `/api/integrations` exempted from the prelaunch gate. **Needs `GITHUB_APP_CLIENT_ID` set
      in Vercel** (previously unused). 118 web tests pass. End-to-end secret-scan validation
      still pending.
-   - **⏸ RESUME HERE — 2026-06-22 (live test of OAuth connect, deploy `b3cabf8` live).**
-     Connect now reaches the production callback (no more stuck-on-"Not connected" / 400). Two
-     issues remain, both observed on a real Connect click at ~12:25 UTC:
-     1. **`NEXT_PUBLIC_APP_URL` is set to localhost in Vercel production.** After the callback,
-        the browser landed on a localhost URL. Both the success and error redirects use
-        `new URL('/integrations', NEXT_PUBLIC_APP_URL || request.url)` (callback route), so a
-        localhost value sends users to localhost. The GitHub App Callback URL itself is
-        correct (our prod callback *did* run). **FIX: set `NEXT_PUBLIC_APP_URL=https://www.vibe-check-app.com`
-        in Vercel prod + redeploy.** (Same var is used by billing checkout/portal, badge, and
-        password-reset email links — so this likely affects those too.)
-     2. **The callback still throws inside the try/catch** → redirects to `/integrations?gh_error=1`
-        and logs `[gh-callback] failed {…}` (captured at 12:25:27 on deploy `b3cabf8`). Exact
-        cause not yet read — Vercel's log table truncates the JSON and the MCP full-text search
-        didn't surface it. **NEXT STEP: open Vercel → project `vibe-check-web` → deployment
-        `b3cabf8` → Runtime Logs → the 12:25:27 `/api/integrations/github/callback` entry →
-        expand the `[gh-callback] failed` object.** It prints `message` plus booleans
-        `hasClientId / hasClientSecret / hasAppId / hasPrivateKey`. That pinpoints whether it's
-        the OAuth token exchange (likely `GITHUB_APP_CLIENT_ID`/secret) or `/user/installations`.
-     Likely the two are independent: fix `NEXT_PUBLIC_APP_URL`, then resolve whatever the
-     `[gh-callback]` message reports. Then the card should flip to **Connected** and we can run
-     the AWS-key secret-scan test. Today's commits (all pushed, all on prod): `7693960`,
-     `5cfdadb`, `c7cf63e`, `eba99a5`, `b3cabf8`.
+   - **✅ Connect flow live end-to-end — 2026-06-25** (`f191729`). Root cause of the
+     `gh_error=1` bounce: GitHub's `/user/installations` returns `account.type` as
+     `'User'`/`'Organization'`, but `github_installations_account_type_check` only allows
+     `'user'`/`'org'` — every live upsert hit the constraint and threw. Fixed by normalizing
+     the value in `lib/github/app.ts::listUserInstallations`. (`NEXT_PUBLIC_APP_URL` localhost
+     issue from the 2026-06-22 resume note was already resolved by then — callback redirects
+     landed on prod correctly.) **Connect verified live — card shows Connected.** 118 web tests
+     pass. **NEXT: run the AWS-test-key secret-scan validation** (Plan B code-complete since
+     2026-06-21 but never validated against a real repo) — connect a repo with a planted dummy
+     AWS key, trigger a scan from `/repos`, confirm `GitHubSecretsScanner` + gitleaks find it and
+     the report renders correctly. Also confirm the Fly redeploy carrying gitleaks +
+     `GITHUB_*` env is actually live (noted as unconfirmed in Plan B).
    - Then Vercel deploy webhooks. *(Slack dropped — too niche.)*
 3. **Resend emails** — welcome, scan-complete, CVE alert.
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
