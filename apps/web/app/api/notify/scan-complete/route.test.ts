@@ -17,6 +17,10 @@ vi.mock('@/lib/email/templates/scan-complete', () => ({
   scanCompleteEmail: vi.fn(() => ({ subject: 'Ready', html: '<p>done</p>' })),
 }))
 
+vi.mock('@/lib/email/templates/scan-failed', () => ({
+  scanFailedEmail: vi.fn(() => ({ subject: 'Failed', html: '<p>failed</p>' })),
+}))
+
 import { POST } from './route'
 
 const VALID_KEY = 'test-internal-key'
@@ -32,12 +36,20 @@ function makeRequest(body: unknown, key?: string): Request {
   })
 }
 
-const validBody = {
+const completedBody = {
+  status: 'completed',
   scan_id: '00000000-0000-0000-0000-000000000001',
   user_id: '00000000-0000-0000-0000-000000000002',
   url: 'https://example.com',
   grade: 'B',
   has_critical: false,
+}
+
+const failedBody = {
+  status: 'failed',
+  scan_id: '00000000-0000-0000-0000-000000000001',
+  user_id: '00000000-0000-0000-0000-000000000002',
+  url: 'https://example.com',
 }
 
 beforeEach(() => {
@@ -48,13 +60,13 @@ beforeEach(() => {
 
 describe('POST /api/notify/scan-complete', () => {
   it('returns 401 for missing key', async () => {
-    const res = await POST(makeRequest(validBody))
+    const res = await POST(makeRequest(completedBody))
     expect(res.status).toBe(401)
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
 
   it('returns 401 for wrong key', async () => {
-    const res = await POST(makeRequest(validBody, 'wrong-key'))
+    const res = await POST(makeRequest(completedBody, 'wrong-key'))
     expect(res.status).toBe(401)
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
@@ -65,31 +77,36 @@ describe('POST /api/notify/scan-complete', () => {
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
 
-  it('sends email and returns 200 for valid request', async () => {
+  it('sends scan-complete email and returns 200', async () => {
     mockGetUserById.mockResolvedValue({ data: { user: { email: 'u@x.com' } }, error: null })
-    const res = await POST(makeRequest(validBody, VALID_KEY))
+    const res = await POST(makeRequest(completedBody, VALID_KEY))
     expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json).toEqual({ ok: true })
+    expect(await res.json()).toEqual({ ok: true })
     expect(mockSendEmail).toHaveBeenCalledOnce()
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'u@x.com' })
-    )
+    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'u@x.com', subject: 'Ready' }))
+  })
+
+  it('sends scan-failed email and returns 200', async () => {
+    mockGetUserById.mockResolvedValue({ data: { user: { email: 'u@x.com' } }, error: null })
+    const res = await POST(makeRequest(failedBody, VALID_KEY))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(mockSendEmail).toHaveBeenCalledOnce()
+    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'u@x.com', subject: 'Failed' }))
   })
 
   it('returns 200 without sending email when user has no email', async () => {
     mockGetUserById.mockResolvedValue({ data: { user: { email: null } }, error: null })
-    const res = await POST(makeRequest(validBody, VALID_KEY))
+    const res = await POST(makeRequest(completedBody, VALID_KEY))
     expect(res.status).toBe(200)
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
 
   it('returns 200 when getUserById throws', async () => {
     mockGetUserById.mockRejectedValue(new Error('network error'))
-    const res = await POST(makeRequest(validBody, VALID_KEY))
+    const res = await POST(makeRequest(completedBody, VALID_KEY))
     expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json).toEqual({ ok: true })
+    expect(await res.json()).toEqual({ ok: true })
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
 })

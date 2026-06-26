@@ -155,6 +155,17 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
         if task_self.request.retries >= task_self.max_retries:
             log_event(user_id, "scan_failed", url_id=url_id, scan_id=scan_id,
                       payload={"url": url, "detail": "scan error"})
+            if settings.web_notify_url:
+                try:
+                    httpx.post(
+                        f"{settings.web_notify_url}/api/notify/scan-complete",
+                        json={"status": "failed", "scan_id": scan_id,
+                              "user_id": user_id, "url": url},
+                        headers={"x-internal-key": settings.scanner_internal_key},
+                        timeout=5.0,
+                    )
+                except Exception as notify_exc:
+                    print(f"[notify] failed to call web notify endpoint: {notify_exc}")
         raise task_self.retry(exc=exc)
 
 

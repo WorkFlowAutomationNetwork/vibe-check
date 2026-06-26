@@ -14,9 +14,12 @@ class _FakeSelf:
         raise exc
 
 
-def _make_mock_scanner(findings):
+def _make_mock_scanner(findings_or_exc):
     m = MagicMock()
-    m.return_value.run.return_value = findings
+    if isinstance(findings_or_exc, Exception):
+        m.return_value.run.side_effect = findings_or_exc
+    else:
+        m.return_value.run.return_value = findings_or_exc
     return m
 
 
@@ -68,3 +71,28 @@ def test_notify_error_does_not_fail_scan(monkeypatch):
     with patch("httpx.post", side_effect=Exception("network error")):
         # Should not raise — scan completes normally
         _execute_scan(_FakeSelf(), "scan-1", "url-1", "active", "user-1")
+
+
+def test_notify_failure_posted_on_terminal_failure(monkeypatch):
+    monkeypatch.setattr("jobs.tasks.settings.web_notify_url", "https://app.example.com")
+    monkeypatch.setattr("jobs.tasks.settings.scanner_internal_key", "secret-key")
+    monkeypatch.setattr(
+        "jobs.tasks._scanners_for_tier",
+        lambda scan_type: [_make_mock_scanner(Exception("scanner boom"))],
+    )
+
+    class _FakeSelfTerminal(_FakeSelf):
+        class request:
+            retries = 3  # at max_retries — terminal failure
+        max_retries = 3
+
+    with patch("httpx.post") as mock_post:
+        try:
+            _execute_scan(_FakeSelfTerminal(), "scan-1", "url-1", "active", "user-1")
+        except Exception:
+            pass
+
+    mock_post.assert_called_once()
+    payload = mock_post.call_args[1]["json"]
+    assert payload["status"] == "failed"
+    assert payload["scan_id"] == "scan-1"
