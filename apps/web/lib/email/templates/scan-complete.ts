@@ -35,7 +35,9 @@ export function scanCompleteEmail(params: {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:40px 20px;background:#FAFAF7;font-family:system-ui,-apple-system,sans-serif;">
   <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E6E6DE;border-radius:4px;padding:40px;">
-    <div style="font-size:20px;font-weight:700;color:#0F0F0E;margin-bottom:32px;">✓ Vibe-Check</div>
+    <div style="margin-bottom:32px;">
+      <img src="https://www.vibe-check-app.com/android-chrome-512x512.png" alt="Vibe-Check" width="40" height="40" style="display:block;border:0;">
+    </div>
     ${criticalBanner}
     <h1 style="font-size:24px;font-weight:700;color:#0F0F0E;margin:0 0 8px;">Scan complete</h1>
     <p style="font-size:14px;color:#54544F;margin:0 0 24px;">${url}</p>

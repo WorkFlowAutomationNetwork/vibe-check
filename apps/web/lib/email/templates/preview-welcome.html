@@ -1,7 +1,4 @@
-export function welcomeEmail(email: string): { subject: string; html: string } {
-  return {
-    subject: 'Welcome to Vibe-Check',
-    html: `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:40px 20px;background:#FAFAF7;font-family:system-ui,-apple-system,sans-serif;">
@@ -19,10 +16,8 @@ export function welcomeEmail(email: string): { subject: string; html: string } {
     </a>
     <hr style="border:none;border-top:1px solid #E6E6DE;margin:40px 0 24px;">
     <p style="font-size:13px;color:#8A8A82;margin:0;">
-      You're receiving this because you signed up at vibe-check-app.com with ${email}.
+      You're receiving this because you signed up at vibe-check-app.com with alice@example.com.
     </p>
   </div>
 </body>
-</html>`,
-  }
-}
+</html>
