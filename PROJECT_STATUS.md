@@ -274,6 +274,10 @@ headers" noise). New regression tests in `tests/test_nuclei.py`. Scanner suite 1
 
 - **Reprice?** Suggested Starter $29–49, Monitor $39–49/mo (current $9/$19 likely undersells; $19/mo Monitor ≈ $228/yr/customer is thin unit economics). A/B the landing price. Not yet acted on.
 - **Onboarding rework?** Consider decoupling the free scan from sign-up: sign up → short "how it works" walkthrough → verify → then run the free scan, rather than forcing URL entry + scan during onboarding.
+- **End-to-end lifecycle sweep (post-launch): secret scanner calibration.** Two improvements to batch together when doing a full findings quality pass: (1) Context-aware severity downgrade for `generic-api-key` — if the matched value appears inside a Firebase Storage URL pattern (`firebasestorage.googleapis.com/...?token=`), downgrade from `medium` to `info` and swap in a softer remediation note (verify asset isn't private; move URL to env var). Hook point is `severity_for()` + `redact_finding()` in `github_secrets_rules.py`. (2) Provider-named titles for known key shapes — detect OpenAI, Anthropic, Firebase App, Supabase anon, etc. by their known prefix/length patterns and emit "OpenAI API key identified" rather than the generic gitleaks description. Both are post-processing changes; no gitleaks invocation changes needed.
+
+- **Vercel Webhooks integration — blocked on Vercel Pro plan.** The Vercel integration UI + backend is fully built and live (connect/regenerate/disconnect on `/integrations`, webhook receiver at `/api/webhooks/vercel/[token]`). Wiring it to Vercel requires Team Settings → Webhooks which is a Pro plan feature. Revisit closer to launch — the webhook URL is regeneratable from the integrations page at any time; do not store the raw URL anywhere as it is a live credential.
+
 - **Post-launch idea: pre-emptive (PR-time) secret scanning as an ultra-premium tier.**
   Current GitHub committed-secret scanning is reactive — it finds secrets already in
   history. A "shift-left" option: listen for the GitHub `pull_request` webhook (plumbing
