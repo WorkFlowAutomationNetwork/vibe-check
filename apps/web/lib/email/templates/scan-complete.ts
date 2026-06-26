@@ -3,7 +3,7 @@ const GRADE_COLOUR: Record<string, string> = {
   B: '#65a30d',
   C: '#d97706',
   D: '#ea580c',
-  F: '#dc2626',
+  F: '#E25C3A',
 }
 
 export function scanCompleteEmail(params: {
