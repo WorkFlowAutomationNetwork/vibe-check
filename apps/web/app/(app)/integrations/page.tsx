@@ -1,5 +1,6 @@
 import AppShell from '@/components/shared/AppShell'
 import GitHubCard from '@/components/integrations/GitHubCard'
+import VercelCard from '@/components/integrations/VercelCard'
 import { createServerClient } from '@/lib/supabase/server'
 import '../app.css'
 
@@ -24,6 +25,16 @@ export default async function IntegrationsPage() {
         .eq('status', 'active')
     : { data: [] }
 
+  const { data: vercelIntegration } = user
+    ? await supabase
+        .from('integrations')
+        .select('id, status, last_triggered_at')
+        .eq('user_id', user.id)
+        .eq('type', 'vercel')
+        .eq('status', 'active')
+        .maybeSingle()
+    : { data: null }
+
   return (
     <AppShell activeNav="integrations">
       <main className="app-main">
@@ -37,17 +48,7 @@ export default async function IntegrationsPage() {
         <h2 className="section-label">Connected services</h2>
         <div className="int-grid">
           <GitHubCard installation={installation ?? null} repos={repos ?? []} />
-
-          <div className="int-card disconnected">
-            <div className="int-head">
-              <div className="int-mark vercel">▲</div>
-              <div className="int-title-wrap">
-                <div className="int-name">Vercel <span className="chip"><span className="dot" style={{ background: 'var(--ink-mute)' }} /> Coming soon</span></div>
-                <p className="int-desc">Deploy-triggered re-scans when you ship to production. Webhook-based — no account access.</p>
-              </div>
-            </div>
-            <div className="int-note">Not available yet — this lands in an upcoming release.</div>
-          </div>
+          <VercelCard integration={vercelIntegration ?? null} />
         </div>
       </main>
     </AppShell>
