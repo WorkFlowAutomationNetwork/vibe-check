@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/email/client'
+import { welcomeEmail } from '@/lib/email/templates/welcome'
 
-// Only allow same-origin relative paths as a post-auth redirect target.
-// Rejects absolute URLs, protocol-relative ("//evil") and backslash
-// ("/\evil") values that browsers treat as off-origin redirects.
 function safeNext(next: string | null): string {
   if (!next) return '/dashboard'
   if (next[0] !== '/' || next[1] === '/' || next[1] === '\\') return '/dashboard'
   return next
+}
+
+function isNewUser(createdAt: string | undefined): boolean {
+  if (!createdAt) return false
+  return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
 export async function GET(request: Request) {
@@ -17,8 +21,13 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = createServerClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      const user = data.user
+      if (user?.email && isNewUser(user.created_at)) {
+        const { subject, html } = welcomeEmail(user.email)
+        await sendEmail({ to: user.email, subject, html })
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
