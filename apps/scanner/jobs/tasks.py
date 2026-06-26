@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import httpx
+
 from lib import consent
 from lib import repo_consent
 from lib.activity import log_event
@@ -113,6 +115,24 @@ def _execute_scan(task_self, scan_id: str, url_id: str, scan_type: str, user_id:
             scanner_version=settings.scanner_version,
             pdf_storage_path=pdf_storage_path,
         )
+
+        if settings.web_notify_url:
+            try:
+                has_critical = any(f.severity == "critical" for f in findings)
+                httpx.post(
+                    f"{settings.web_notify_url}/api/notify/scan-complete",
+                    json={
+                        "scan_id": scan_id,
+                        "user_id": user_id,
+                        "url": url,
+                        "grade": letter,
+                        "has_critical": has_critical,
+                    },
+                    headers={"x-internal-key": settings.scanner_internal_key},
+                    timeout=5.0,
+                )
+            except Exception as exc:
+                print(f"[notify] failed to call web notify endpoint: {exc}")
 
         log_event(user_id, "scan_completed", url_id=url_id, scan_id=scan_id,
                   payload={"url": url, "grade": letter, "score": score,

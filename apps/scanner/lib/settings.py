@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     github_app_id: str | None = None
     github_app_private_key: str | None = None
     github_api_url: str = "https://api.github.com"
+    web_notify_url: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
