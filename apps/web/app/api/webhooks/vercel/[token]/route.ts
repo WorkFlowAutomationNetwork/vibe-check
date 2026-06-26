@@ -50,15 +50,6 @@ export async function POST(
     .update({ last_triggered_at: new Date().toISOString() })
     .eq('id', integration.id)
 
-  await supabase
-    .from('webhook_log')
-    .insert({
-      integration_id: integration.id,
-      source: 'vercel',
-      payload: rawBody ?? {},
-      status: 'SCAN_QUEUED',
-    })
-
   const { data: urls } = await supabase
     .from('urls')
     .select('id')
@@ -68,6 +59,14 @@ export async function POST(
     .is('deleted_at', null)
 
   if (!urls?.length) {
+    await supabase
+      .from('webhook_log')
+      .insert({
+        integration_id: integration.id,
+        source: 'vercel',
+        payload: rawBody ?? {},
+        status: 'IGNORED',
+      })
     return NextResponse.json({ queued: 0 })
   }
 
@@ -104,6 +103,15 @@ export async function POST(
       if (dispatched) queued++
     }
   }
+
+  await supabase
+    .from('webhook_log')
+    .insert({
+      integration_id: integration.id,
+      source: 'vercel',
+      payload: rawBody ?? {},
+      status: queued > 0 ? 'SCAN_QUEUED' : 'IGNORED',
+    })
 
   return NextResponse.json({ queued })
 }

@@ -48,6 +48,7 @@ describe('VercelCard — connected, URL unknown', () => {
   })
 
   it('shows the new URL after regenerating', async () => {
+    vi.stubGlobal('confirm', () => true)
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({ webhookUrl: 'https://app.test/api/webhooks/vercel/newtoken' }),

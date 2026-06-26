@@ -31,16 +31,20 @@ export default function VercelCard({
   const connected = integration?.status === 'active'
 
   async function generate() {
+    if (connected && !confirm('Regenerate webhook URL? The current URL will stop working immediately.')) return
     setLoading(true)
-    const res = await fetch('/api/integrations/vercel', { method: 'POST' })
-    const json = await res.json()
-    setWebhookUrl(json.webhookUrl)
-    setIntegration(i =>
-      i
+    try {
+      const res = await fetch('/api/integrations/vercel', { method: 'POST' })
+      if (!res.ok) return
+      const json = await res.json()
+      setWebhookUrl(json.webhookUrl)
+      setIntegration(i => i
         ? { ...i, status: 'active' }
         : { id: '', status: 'active', last_triggered_at: null }
-    )
-    setLoading(false)
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function disconnect() {
