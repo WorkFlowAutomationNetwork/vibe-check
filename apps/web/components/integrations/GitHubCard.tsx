@@ -19,7 +19,9 @@ export default function GitHubCard({
   return (
     <div className="int-card">
       <div className="int-head">
-        <div className="int-mark gh">○</div>
+        <div className="int-mark gh">
+          <img src="/github-mark.svg" alt="GitHub" width={26} height={26} style={{ filter: 'invert(1)' }} />
+        </div>
         <div className="int-title-wrap">
           <div className="int-name">
             GitHub{' '}
