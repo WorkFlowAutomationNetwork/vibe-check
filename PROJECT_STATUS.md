@@ -27,7 +27,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 | Scanner (`apps/scanner`) | ✅ Deployed | `vibe-check-scanner.fly.dev`. FastAPI + Celery + Redis. ~142 tests passing. nuclei v3.9.0 pinned, 13k templates live. VM 2GB/2CPU, scan timeout 300s. |
 | Redis | ✅ Deployed | Fly.io managed (`vibe-check-redis`). |
 | Stripe | ✅ Wired | Test-mode products (`starter_one_off` $9, `monitor_monthly` $19/mo, by lookup_key). Checkout + portal + webhook all verified end-to-end. **Live keys/products not yet created.** |
-| Resend (email) | ❌ Not wired | Key env var exists; no send calls anywhere. |
+| Resend (email) | ✅ Wired | Welcome email on sign-up, scan-complete + critical-findings alert. `RESEND_API_KEY` + `EMAIL_FROM` in env. Scanner posts to `/api/notify/scan-complete` via `WEB_NOTIFY_URL`. |
 
 > **Note:** the 2026-06-17 Fly.io redeploy shipped all scanner work through that date (tech-disclosure, secrets, Supabase/Storage exposure, rate-limit, PDF, Nuclei). The scanner then went **5 days without a redeploy** (last deploy 2026-06-20, v13) while Plan B (GitHub committed-secret scanning) landed in the repo — so the live instance silently lacked the `/api/repo-scans` route and gitleaks entirely until the 2026-06-25 redeploy (`67417b4`) caught it up. Lesson: code being "complete" in git ≠ live; check `fly releases` against the latest scanner-touching commit before assuming.
 
@@ -95,7 +95,7 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
 ## Gaps / What to build next (priority order)
 
 > **Launch sequencing (set 2026-06-20).** Product correctness first, commerce last. Order:
-> ① scan correctness ② integrations (GitHub + Vercel) ③ email notifications ④ Stripe
+> ① scan correctness ② integrations (GitHub + Vercel) ③ email notifications ✅ **done 2026-06-26** ④ Stripe
 > billing/portal reflection ⑤ pricing decisions ⑥ website accuracy + docs/FAQs
 > ⑦ detailed testing ⑧ Stripe live payment processing. **Slack integration dropped (too niche).**
 
