@@ -191,7 +191,12 @@ All `(app)` pages are server components wired to real Supabase data; all `(auth)
      RPC returns `repo_scans_run: 1, secrets_found: 3` matching today's real
      `business-website` scan.
    - Remaining: Vercel deploy webhooks. *(Slack dropped — too niche.)*
-3. **Resend emails** — welcome, scan-complete, CVE alert.
+3. **Resend emails** ✅ **done 2026-06-26**. Welcome (on sign-up), scan-complete + critical
+   alert (scanner POSTs to `/api/notify/scan-complete`), scan-failed (on terminal retry
+   exhaustion), and waitlist confirmation (on fresh prelaunch signup). All fire-and-forget,
+   164 web tests + 4 scanner notify tests pass. Logo + Space Grotesk wordmark in all four
+   templates. Preview files at `apps/web/lib/email/templates/preview-*.html`.
+   Not built: badge-expiry warning (needs a cron job — deferred).
 4. **Stripe billing/portal reflection** — billing page + portal accurately reflect plan
    state, invoices, and subscription lifecycle.
 5. **Pricing decisions** — reprice (see *Open product decisions*) before copy is finalised.
