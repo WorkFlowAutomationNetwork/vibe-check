@@ -83,4 +83,13 @@ describe('POST /api/notify/scan-complete', () => {
     expect(res.status).toBe(200)
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
+
+  it('returns 200 when getUserById throws', async () => {
+    mockGetUserById.mockRejectedValue(new Error('network error'))
+    const res = await POST(makeRequest(validBody, VALID_KEY))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json).toEqual({ ok: true })
+    expect(mockSendEmail).not.toHaveBeenCalled()
+  })
 })

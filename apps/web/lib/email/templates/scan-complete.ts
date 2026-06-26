@@ -20,9 +20,9 @@ export function scanCompleteEmail(params: {
     : `Your scan is ready — Grade ${grade}`
 
   const criticalBanner = hasCritical
-    ? `<div style="background:#FEE2E2;border-left:4px solid #dc2626;padding:16px;border-radius:0 4px 4px 0;margin-bottom:24px;">
-        <strong style="color:#991b1b;">Critical issues found</strong>
-        <p style="margin:4px 0 0;font-size:14px;color:#7f1d1d;">
+    ? `<div style="background:#FEE2E2;border-left:4px solid #E25C3A;padding:16px;border-radius:0 4px 4px 0;margin-bottom:24px;">
+        <strong style="color:#E25C3A;">Critical issues found</strong>
+        <p style="margin:4px 0 0;font-size:14px;color:#54544F;">
           Your scan detected critical security issues that need immediate attention. View the full report for details and remediation steps.
         </p>
       </div>`

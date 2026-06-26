@@ -26,13 +26,17 @@ export async function POST(request: Request) {
 
   const { scan_id, user_id, url, grade, has_critical } = parsed.data
 
-  const supabase = createServiceClient()
-  const { data } = await supabase.auth.admin.getUserById(user_id)
-  const email = data.user?.email
+  try {
+    const supabase = createServiceClient()
+    const { data } = await supabase.auth.admin.getUserById(user_id)
+    const email = data.user?.email
 
-  if (email) {
-    const { subject, html } = scanCompleteEmail({ url, grade, scanId: scan_id, hasCritical: has_critical })
-    await sendEmail({ to: email, subject, html })
+    if (email) {
+      const { subject, html } = scanCompleteEmail({ url, grade, scanId: scan_id, hasCritical: has_critical })
+      await sendEmail({ to: email, subject, html })
+    }
+  } catch {
+    // Supabase or send failure — email is best-effort, never fail the scanner
   }
 
   return NextResponse.json({ ok: true })
