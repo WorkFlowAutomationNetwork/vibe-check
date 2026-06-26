@@ -13,6 +13,6 @@ export async function sendEmail(params: {
       ...params,
     })
   } catch (err) {
-    console.error('[email] send failed', err)
+    console.error('[email]', err)
   }
 }
