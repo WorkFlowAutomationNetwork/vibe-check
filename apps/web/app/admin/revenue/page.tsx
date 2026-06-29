@@ -1,16 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import AdminShell from '@/components/admin/AdminShell'
-
-// Placeholder infrastructure cost estimates (update when actual billing known)
-const INFRA_COSTS = [
-  { label: 'Fly.io (scanner)', monthly: 7, note: '1 shared-cpu-1x, 512 MB' },
-  { label: 'Fly.io (Redis)', monthly: 3, note: 'Upstash managed Redis' },
-  { label: 'Supabase', monthly: 0, note: 'Free tier (upgrade at ~500 MAU)' },
-  { label: 'Vercel', monthly: 0, note: 'Hobby / Pro plan TBD' },
-  { label: 'Resend (email)', monthly: 0, note: 'Free tier (3k/month)' },
-]
-
-const TOTAL_INFRA = INFRA_COSTS.reduce((sum, c) => sum + c.monthly, 0)
+import InfraCostPanel from '@/components/admin/InfraCostPanel'
 
 export default async function AdminRevenuePage() {
   const service = createServiceClient()
@@ -39,7 +29,6 @@ export default async function AdminRevenuePage() {
 
   const mrr = starterUsers * 9 + monitorUsers * 19
   const arr = mrr * 12
-  const netMRR = mrr - TOTAL_INFRA
 
   const scansThisMonth = scansThisMonthResult.count ?? 0
   const conversionRate = totalUsers > 0
@@ -58,9 +47,6 @@ export default async function AdminRevenuePage() {
   for (const s of allScans) {
     scansByType[s.scan_type] = (scansByType[s.scan_type] ?? 0) + 1
   }
-
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 
   const monthName = new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
 
@@ -93,8 +79,8 @@ export default async function AdminRevenuePage() {
           </div>
           <div className="admin-stat lime">
             <div className="admin-stat-label">Net MRR</div>
-            <div className="admin-stat-value">${netMRR}</div>
-            <div className="admin-stat-sub">after ~${TOTAL_INFRA} infra costs</div>
+            <div className="admin-stat-value">${mrr}</div>
+            <div className="admin-stat-sub">see live infra panel below</div>
           </div>
           <div className="admin-stat violet">
             <div className="admin-stat-label">ARR (Est.)</div>
@@ -157,38 +143,8 @@ export default async function AdminRevenuePage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-          {/* Infrastructure costs */}
-          <div className="admin-table-wrap" style={{ marginBottom: 0 }}>
-            <div className="admin-table-head">
-              <span className="admin-table-title">Infrastructure Costs (Est.)</span>
-            </div>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Service</th>
-                  <th>Note</th>
-                  <th style={{ textAlign: 'right' }}>$/mo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INFRA_COSTS.map(c => (
-                  <tr key={c.label}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.label}</td>
-                    <td style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{c.note}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                      {c.monthly === 0 ? <span style={{ color: 'var(--lime-deep)' }}>Free</span> : `$${c.monthly}`}
-                    </td>
-                  </tr>
-                ))}
-                <tr style={{ borderTop: '2px solid var(--ink)' }}>
-                  <td colSpan={2} style={{ fontWeight: 700 }}>Total est. monthly infra</td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                    ${TOTAL_INFRA}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {/* Infrastructure costs — live from Fly.io API */}
+          <InfraCostPanel />
 
           {/* Scan type breakdown */}
           <div className="admin-table-wrap" style={{ marginBottom: 0 }}>
