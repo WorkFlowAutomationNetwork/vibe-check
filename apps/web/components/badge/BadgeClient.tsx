@@ -33,12 +33,13 @@ function formatMonth(iso: string | null): string {
 export default function BadgeClient({ badge, appUrl }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
 
-  const badgeHref = badge ? `${appUrl}/badge/${badge.public_token}` : ''
+  const publicReportHref = badge ? `${appUrl}/report/${badge.scan_id}/public` : ''
+  const badgeImgSrc = badge ? `${appUrl}/api/badge/${badge.public_token}/image` : ''
   const imgSnippet = badge
-    ? `<a href="${badgeHref}" target="_blank" rel="noopener">\n  <img src="${appUrl}/badge/${badge.public_token}.svg" alt="Vibe-Checked" height="24" />\n</a>`
+    ? `<a href="${publicReportHref}" target="_blank" rel="noopener">\n  <img src="${badgeImgSrc}" alt="Vibe-Checked" height="20" />\n</a>`
     : ''
   const mdSnippet = badge
-    ? `[![Vibe-Checked](${appUrl}/badge/${badge.public_token}.svg)](${badgeHref})`
+    ? `[![Vibe-Checked](${badgeImgSrc})](${publicReportHref})`
     : ''
 
   function copy(text: string, key: string) {
@@ -170,13 +171,13 @@ export default function BadgeClient({ badge, appUrl }: Props) {
               marginBottom: 28,
             }}>
               <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {badgeHref}
+                {publicReportHref}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => copy(badgeHref, 'link')} className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
+                <button onClick={() => copy(publicReportHref, 'link')} className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
                   {copied === 'link' ? '✓ Copied!' : 'Copy link'}
                 </button>
-                <a href={badgeHref} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}>Open ↗</a>
+                <a href={publicReportHref} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}>Open ↗</a>
               </div>
             </div>
           </>
@@ -187,7 +188,7 @@ export default function BadgeClient({ badge, appUrl }: Props) {
           {[
             ['1. Scan', 'Run an active scan on your verified URL. The badge is issued when the scan completes.'],
             ['2. Embed', 'Paste the HTML or Markdown snippet into your site or README. The badge is cryptographically signed.'],
-            ['3. Renew', 'Badges expire with your scan. Re-scan at any time to extend. Monitoring plan renews automatically on every deploy.'],
+            ['3. Renew', 'Badges expire with your scan. Re-scan at any time to extend. Monitor plan subscribers can also trigger re-scans via deploy hooks.'],
           ].map(([title, desc]) => (
             <div key={title} style={{ background: 'var(--bg-card)', border: '1.5px solid var(--line)', borderRadius: 'var(--radius)', padding: '20px 20px' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12, color: 'var(--violet)', marginBottom: 8 }}>{title}</div>

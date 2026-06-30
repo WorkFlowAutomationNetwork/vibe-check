@@ -23,7 +23,7 @@ SaaS security auditing for "vibe-coded" apps. User gives a URL, verifies ownersh
 | Service | Status | Notes |
 |---|---|---|
 | Next.js (`apps/web`) | ✅ Live | Next 14 App Router, TS strict. Build clean. |
-| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 25 migrations applied (waitlist applied to prod 2026-06-21). RLS on all tables. |
+| Supabase | ✅ Live | Project `lvkiflbpbtmlrgdftivt`. 27 migrations applied (latest: `20260630000027` — anon URL read for public reports). RLS on all tables. |
 | Scanner (`apps/scanner`) | ✅ Deployed | `vibe-check-scanner.fly.dev`. FastAPI + Celery + Redis. ~142 tests passing. nuclei v3.9.0 pinned, 13k templates live. VM 2GB/2CPU, scan timeout 300s. |
 | Redis | ✅ Deployed | Fly.io managed (`vibe-check-redis`). |
 | Stripe | ✅ Wired | Test-mode products (`starter_one_off` $9, `monitor_monthly` $19/mo, by lookup_key). Checkout + portal + webhook all verified end-to-end. **Live keys/products not yet created.** |
@@ -236,6 +236,28 @@ Honest claims that **are** backed: SSL/security headers, exposed endpoints (Supa
 
 ## Known code issues
 
+**Resolved 2026-06-30 — Full page-by-page audit.** Swept every page and component pre-launch. Issues found and fixed (all in one session):
+
+| # | Severity | Page/File | Issue | Status |
+|---|---|---|---|---|
+| 1 | **Critical** | `middleware.ts` | `/report/*` was fully auth-protected, blocking non-logged-in users from `/report/[id]/public`. Public reports redirected to sign-in instead of rendering. | ✅ Fixed: excluded `/public` suffix from protected check |
+| 2 | **Critical** | `middleware.ts` | `/repos` not in protected list — unauthenticated visitors got 404 instead of redirect to sign-in. | ✅ Fixed: added `/repos` to protected paths |
+| 3 | **Critical** | `supabase/migrations` + `report/[scanId]/public/page.tsx` | `urls` table had no anon-read RLS policy. Public report would show blank URL to non-logged-in visitors. | ✅ Fixed: migration `20260630000027` adds anon-read policy for URLs with public scans, applied to prod |
+| 4 | **Critical** | `BadgeClient.tsx` | Badge embed `badgeHref` pointed to `/badge/${token}` — no such public route exists (auth-protected page, no `[token]` slug). Badge SVG pointed to `/badge/${token}.svg` — no SVG route. Both 404 or redirect to sign-in. | ✅ Fixed: `badgeHref` → `/report/${scan_id}/public`; SVG → `/api/badge/${token}/image` |
+| 5 | **Critical** | `app/api/badge/[token]/image/route.ts` | Badge SVG image endpoint did not exist. | ✅ Fixed: created SVG badge endpoint with grade colour + lapsed state |
+| 6 | Medium | `components/shared/AppShell.tsx` | Nav had 3 items all linking to `/dashboard` ("Overview", "My URLs", "Reports") — confusing; "Docs & methodology" linked to `/docs` which doesn't exist (404). | ✅ Fixed: consolidated to one "Dashboard" item; `/docs` → `/trust` ("How we scan") |
+| 7 | Medium | `app/(marketing)/page.tsx` | Badge snippet showed `<script src="vibe-check.dev/b.js">` — wrong format, wrong domain, vibe-check.dev doesn't exist. Real embed is `<img>` + `<a>`. | ✅ Fixed: snippet now shows correct `<img src="/api/badge/…/image">` format |
+| 8 | Medium | `app/(marketing)/page.tsx` | Step 03 demo showed "Outdated next-auth" — implies dependency CVE scanning which doesn't exist. | ✅ Fixed: replaced with "No rate limiting on login" and "Supabase table exposed" — both real findings |
+| 9 | Medium | `app/(app)/settings/page.tsx` | Notifications section mentioned Slack as a delivery channel (Slack integration dropped). | ✅ Fixed: removed Slack reference |
+| 10 | Low | `app/(app)/settings/page.tsx` | "New CVE matched to your stack" notification description implied a CVE feed that doesn't exist. | ✅ Fixed: renamed to "New critical finding on re-scan" with accurate description |
+| 11 | Low | `app/(app)/settings/page.tsx` | "Deep" scan described as "brute-force probes" — alarming and inaccurate. | ✅ Fixed: "More thorough, extends active with Nuclei template suite" |
+| 12 | Low | `app/(app)/settings/page.tsx` | "Export all data" button had no handler — completely inert. | ✅ Fixed: shows message directing user to email support for a manual export |
+| 13 | Low | `app/(app)/settings/page.tsx` | Password minimum inconsistent: sign-up requires 8 chars, settings change-password required 12. | ✅ Fixed: settings now matches sign-up (8 chars) |
+| 14 | Low | `app/(marketing)/trust/page.tsx` | "Read-only, scoped activity" — inaccurate since RateLimitScanner sends real POST requests. | ✅ Fixed: "Non-destructive, scoped activity" with accurate description |
+| 15 | Low | `BadgeClient.tsx` | "Monitoring plan renews automatically on every deploy" — Vercel webhooks are "coming soon". | ✅ Fixed: "Monitor plan subscribers can trigger re-scans via deploy hooks" |
+
+**Open — settings notifications not fully implemented.** The four notification toggles save to `profiles` but only `notify_scan_complete` and `notify_badge_expiry` have partial backend wiring. `notify_cve_matched` (now "new critical finding on re-scan") and `notify_weekly_digest` have no send logic yet. Toggles are correctly persisted; logic to act on them is post-launch work.
+
 **Open — Plan C (repo report UI) review follow-ups** (all Minor; surfaced in the whole-branch
 review at merge `c0776f6`, none blocking):
 - **`act()` warning in `ScanRepoButton.test.tsx`** — the polling state update isn't wrapped in
@@ -312,7 +334,7 @@ apps/scanner/
   lib/{consent,supabase_creds,jwt,storage}.py
   reports/{grader,renderer}.py + templates/report.html
   fly.toml · Dockerfile (nuclei pinned v3.9.0)
-supabase/migrations/               ← 24 migrations (applied)
+supabase/migrations/               ← 27 migrations (applied to prod)
 design/                            ← HTML UI references (source of truth for component structure)
 docs/superpowers/{specs,plans}/    ← dated specs + plans for scanner work
 ```

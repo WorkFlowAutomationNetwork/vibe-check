@@ -44,7 +44,7 @@ export default function PricingPage() {
               <p className="tier-sub">Passive scan, basic report. Good enough to know if you&apos;re actually in trouble.</p>
               <ul>
                 <li>Passive HTTP &amp; DNS analysis</li>
-                <li>Top 25 vulnerability checks</li>
+                <li>Security headers &amp; TLS checks</li>
                 <li>1 URL</li>
                 <li>Plain-text report (web only)</li>
                 <li>No badge, no PDF, no monitoring</li>
@@ -57,10 +57,10 @@ export default function PricingPage() {
               <div className="tier-price">$9<span className="per">/ scan</span></div>
               <p className="tier-sub">Full active audit. The &ldquo;I&apos;m launching Tuesday and want to be sure&rdquo; tier.</p>
               <ul>
-                <li>All 180 checks, active mode</li>
+                <li>50+ checks, active mode</li>
                 <li>Shareable HTML report + PDF export</li>
                 <li>&ldquo;Vibe-Checked ✓&rdquo; badge, valid 30 days</li>
-                <li>Re-run for 30 days, free</li>
+                <li>Re-run anytime, free</li>
                 <li>1 URL, one-off payment</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Buy a scan →</Link>
@@ -73,8 +73,8 @@ export default function PricingPage() {
               <ul>
                 <li>Everything in One-off</li>
                 <li>Deploy-triggered re-scans (webhook)</li>
-                <li>CVE alerts in Slack / email</li>
-                <li>Badge stays active automatically</li>
+                <li>Email alerts on new findings</li>
+                <li>Badge renewed on each re-scan</li>
                 <li>Up to 5 URLs</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Start monitoring →</Link>
@@ -91,11 +91,11 @@ export default function PricingPage() {
           {[
             [
               'Is the free scan actually free?',
-              'Yes, forever. No card, no trial, no catch. Free tier is passive-only — we check headers, DNS, SSL config, and public endpoint exposure. We do not probe auth flows or run active exploit checks on the free tier.',
+              'Yes, forever. No card, no trial, no catch — you just need a free account (sign-up takes 30 seconds). Free tier is passive-only: we check security headers, TLS/SSL config, and certificate health. We do not run active probes on the free tier.',
             ],
             [
               'What counts as an "active" probe?',
-              'Active scans send crafted requests to your app to test for SQL injection, XSS, auth bypasses, prompt injection, and common misconfigs. Read-only — we never write or delete data, and we always respect robots.txt. You verify ownership first so we know you consented.',
+              'Active scans send crafted requests to your app — checking for exposed Supabase tables/buckets, leaked secrets in JS bundles, rate-limiting on login endpoints, and 50+ vulnerability patterns via Nuclei templates. Non-destructive: we never write to your database or delete anything. You verify ownership first so we know you consented.',
             ],
             [
               'Do I need to install anything?',
@@ -126,7 +126,7 @@ export default function PricingPage() {
       <section style={{ background: 'var(--ink)', padding: '60px 0', textAlign: 'center' }}>
         <div className="label-mono" style={{ color: 'var(--lime)', marginBottom: 16 }}>Ready?</div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Find out if your app is actually secure.</h2>
-        <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 28, fontSize: 16 }}>Free scan. No card. Takes 60 seconds.</p>
+        <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 28, fontSize: 16 }}>Free scan. No card. As little as 60 seconds.</p>
         <Link href="/sign-up" className="btn-primary" style={{ fontSize: 16, padding: '14px 28px' }}>Run free scan →</Link>
       </section>
     </>

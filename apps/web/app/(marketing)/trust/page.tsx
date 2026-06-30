@@ -90,7 +90,7 @@ export default function TrustPage() {
           <ul style={{ listStyle: 'none', padding: 0, marginBottom: 40, display: 'grid', gap: 18 }}>
             {[
               ['Ownership verification before any scan', 'Every URL must pass a DNS TXT or file-based ownership check before a single request is sent. Scans against unverified targets are refused at the job level, not just the UI.'],
-              ['Read-only, scoped activity', 'Scans read; they do not write, modify, or delete data on your systems. Active probes are scoped and rate-limited, and we store likelihood assessments and aggregate counts — never the contents of your data.'],
+              ['Non-destructive, scoped activity', 'Scans never modify or delete data on your systems. Active probes are scoped and rate-limited — some send crafted requests (e.g. login-endpoint rate-limit tests) but we never write to your database or alter application state. We store likelihood assessments and aggregate counts, never the contents of your data.'],
               ['Declared infrastructure only', 'We scan exclusively from the IPs above. This is our commitment that scan activity is authorised, scoped, and attributable.'],
               ['You are responsible for authorisation', 'You confirm you own, or are authorised to test, every target you submit. Scanning systems you do not control may be illegal — see our Terms.'],
             ].map(([title, body]) => (
@@ -105,8 +105,7 @@ export default function TrustPage() {
             Questions about scan traffic you&apos;ve seen? See our{' '}
             <Link href="/terms" style={{ color: 'var(--violet)' }}>Terms</Link> and{' '}
             <Link href="/privacy" style={{ color: 'var(--violet)' }}>Privacy Policy</Link>, or contact{' '}
-            {/* TODO[business]: replace with real abuse/security contact address */}
-            <span style={{ fontFamily: 'var(--font-mono)' }}>security@[YOUR-DOMAIN]</span>.
+            <a href="mailto:security@vibe-check-app.com" style={{ fontFamily: 'var(--font-mono)', color: 'var(--violet)' }}>security@vibe-check-app.com</a>.
           </p>
         </div>
       </section>

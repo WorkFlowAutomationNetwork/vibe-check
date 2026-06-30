@@ -25,16 +25,6 @@ export default async function IntegrationsPage() {
         .eq('status', 'active')
     : { data: [] }
 
-  const { data: vercelIntegration } = user
-    ? await supabase
-        .from('integrations')
-        .select('id, status, last_triggered_at')
-        .eq('user_id', user.id)
-        .eq('type', 'vercel')
-        .eq('status', 'active')
-        .maybeSingle()
-    : { data: null }
-
   return (
     <AppShell activeNav="integrations">
       <main className="app-main">
@@ -48,7 +38,7 @@ export default async function IntegrationsPage() {
         <h2 className="section-label">Connected services</h2>
         <div className="int-grid">
           <GitHubCard installation={installation ?? null} repos={repos ?? []} />
-          <VercelCard integration={vercelIntegration ?? null} />
+          <VercelCard />
         </div>
       </main>
     </AppShell>

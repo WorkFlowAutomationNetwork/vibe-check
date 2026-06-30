@@ -74,7 +74,7 @@ export default function SettingsPage() {
   async function changePassword(e: React.FormEvent) {
     e.preventDefault()
     setPwError(null)
-    if (newPassword.length < 12) { setPwError('Password must be at least 12 characters.'); return }
+    if (newPassword.length < 8) { setPwError('Password must be at least 8 characters.'); return }
     if (newPassword !== confirmPassword) { setPwError('Passwords do not match.'); return }
     setPwStatus('saving')
     const { error } = await supabase.auth.updateUser({ password: newPassword })
@@ -153,7 +153,7 @@ export default function SettingsPage() {
                 <div className="field-row">
                   <div className="field">
                     <label>New password</label>
-                    <input type="password" placeholder="at least 12 chars" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <input type="password" placeholder="at least 8 chars" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                   </div>
                   <div className="field">
                     <label>Confirm</label>
@@ -174,10 +174,10 @@ export default function SettingsPage() {
           <section className="settings-section">
             <h2 className="section-label">Notifications</h2>
             {([
-              ['notify_cve_matched', 'New CVE matched to your stack', 'Email (+ Slack if connected) the moment something in your deps gets a CVE.'],
-              ['notify_scan_complete', 'Scan completed', 'Only useful if you run a lot of manual scans. Off by default.'],
+              ['notify_cve_matched', 'New critical finding on re-scan', 'Email when a new critical or high-severity finding appears on a re-scan of your app.'],
+              ['notify_scan_complete', 'Scan completed', 'Email when a scan finishes. Only useful if you run a lot of scans and want to be notified each time.'],
               ['notify_badge_expiry', 'Badge expiring in 7 days', "Heads-up email so your public badge doesn't quietly lapse."],
-              ['notify_weekly_digest', 'Weekly digest', 'Friday summary of scans, findings closed, new CVEs. Useful in team settings.'],
+              ['notify_weekly_digest', 'Weekly digest', 'Friday summary of scans run and findings status.'],
             ] as const).map(([key, title, desc]) => (
               <div key={key} className="toggle-row" onClick={() => toggleNotif(key)} style={{ cursor: 'pointer' }}>
                 <div className="toggle-text">
@@ -189,7 +189,8 @@ export default function SettingsPage() {
             ))}
             <div className="slack-cta">
               <span style={{ color: 'var(--ink-mute)' }}>↪</span>
-              Slack not connected — <Link href="/integrations">connect Slack</Link> to route the above into a channel.
+              All notifications are sent to your account email. GitHub integration is available in{' '}
+              <Link href="/integrations">Integrations</Link>.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
               <button className="btn btn-primary" onClick={saveNotifs} disabled={notifStatus === 'saving'}>
@@ -215,8 +216,8 @@ export default function SettingsPage() {
                     <div className="radio-dot" />
                     <div className="radio-text">
                       {d === 'passive' && <><h4>Passive only</h4><p>HTTP + DNS analysis. No requests to your app&apos;s auth or write endpoints.</p></>}
-                      {d === 'active' && <><h4>Active <span className="pill-mini">default</span></h4><p>~180 probes including known exploits. Read-only — never destructive.</p></>}
-                      {d === 'deep' && <><h4>Deep</h4><p>Slower (~3 min), more intrusive. Brute-force probes against auth endpoints. May trigger WAFs.</p></>}
+                      {d === 'active' && <><h4>Active <span className="pill-mini">default</span></h4><p>50+ checks including Nuclei templates, secrets, and rate limiting. Non-destructive — we never modify your data.</p></>}
+                      {d === 'deep' && <><h4>Deep</h4><p>Slower (up to 7 min), more thorough. Extends active with Nuclei template suite. May trigger WAF alerts.</p></>}
                     </div>
                   </div>
                 ))}
@@ -266,12 +267,17 @@ export default function SettingsPage() {
               <h3>Export or delete your data</h3>
               <p>Deletion is permanent. Reports, grades, and badge history are gone. We keep anonymised aggregate stats for trend research — nothing identifying.</p>
               <div className="danger-actions">
-                <button className="btn btn-soft">⇩ Export all data (JSON)</button>
+                <button
+                  className="btn btn-soft"
+                  onClick={() => alert('Data export is not yet self-serve. Email support@vibe-check-app.com and we\'ll send you a JSON export within 48 hours.')}
+                >
+                  ⇩ Export all data (JSON)
+                </button>
                 <button
                   className="btn btn-danger"
                   onClick={() => {
                     if (window.confirm('Delete your account? This cannot be undone.')) {
-                      alert('Account deletion is not yet available. Contact support@vibe-check.dev')
+                      alert('Account deletion is not yet available. Contact support@vibe-check-app.com')
                     }
                   }}
                 >

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: '%s | Vibe Check',
   },
   description:
-    'Security auditing for indie founders and solo builders. Get a graded report covering headers, exposed endpoints, prompt injection, CVEs, and more.',
+    'Security auditing for indie founders and solo builders. Get a graded report covering security headers, TLS, exposed Supabase tables, leaked secrets, rate-limiting, and committed-secret scanning.',
   icons: {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },

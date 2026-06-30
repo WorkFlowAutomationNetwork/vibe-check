@@ -19,7 +19,7 @@ const PLAN_PRICES: Record<string, string> = {
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   free: 'Passive scan only. No active probes, no badge, no report sharing.',
   starter: 'One-off active scans with shareable report and trust badge.',
-  monitor: 'Continuous monitoring, deploy-triggered re-scans, CVE alerts, and up to 5 URLs.',
+  monitor: 'Continuous monitoring, deploy-triggered re-scans, email alerts on new findings, and up to 5 URLs.',
 }
 
 const URL_LIMITS: Record<string, number> = { free: 1, starter: 1, monitor: 5 }
@@ -182,7 +182,7 @@ export default async function BillingPage() {
             <div className="v yes">✓</div>
           </div>
           <div className="compare-row">
-            <div className="feat">Active probes (auth, prompt injection, IDOR)</div>
+            <div className="feat">Active probes (Nuclei templates, secrets, rate limiting)</div>
             <div className="v no">—</div>
             <div className="v yes">✓</div>
             <div className="v yes">✓</div>
@@ -206,7 +206,7 @@ export default async function BillingPage() {
             <div className="v yes">✓ webhook</div>
           </div>
           <div className="compare-row">
-            <div className="feat">CVE alerts (email + Slack)</div>
+            <div className="feat">Email alerts on new findings</div>
             <div className="v no">—</div>
             <div className="v no">—</div>
             <div className="v yes">✓</div>
@@ -267,6 +267,15 @@ export default async function BillingPage() {
               Manage subscription
             </a>
           )}
+        </div>
+
+        <div style={{ marginTop: 16, fontSize: 13, color: 'var(--ink-mute)', textAlign: 'center' }}>
+          Questions about charges or refunds?{' '}
+          <a href="mailto:support@vibe-check-app.com" style={{ color: 'var(--violet)' }}>Contact support</a>
+          {' '}·{' '}
+          <Link href="/terms#refund" style={{ color: 'var(--violet)' }}>Refund policy</Link>
+          {' '}·{' '}
+          <Link href="/privacy" style={{ color: 'var(--violet)' }}>Privacy policy</Link>
         </div>
       </main>
     </AppShell>

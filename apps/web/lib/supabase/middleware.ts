@@ -31,14 +31,18 @@ export async function updateSession(request: NextRequest) {
   // Refresh session — must not contain any logic between createServerClient and getUser
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isProtected = request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/report') ||
-    request.nextUrl.pathname.startsWith('/onboard') ||
-    request.nextUrl.pathname.startsWith('/badge') ||
-    request.nextUrl.pathname.startsWith('/integrations') ||
-    request.nextUrl.pathname.startsWith('/settings') ||
-    request.nextUrl.pathname.startsWith('/billing') ||
-    request.nextUrl.pathname.startsWith('/admin')
+  const path = request.nextUrl.pathname
+  const isProtected =
+    path.startsWith('/dashboard') ||
+    // /report/[id]/public is publicly accessible; all other report paths need auth
+    (path.startsWith('/report') && !path.endsWith('/public')) ||
+    path.startsWith('/onboard') ||
+    path.startsWith('/badge') ||
+    path.startsWith('/repos') ||
+    path.startsWith('/integrations') ||
+    path.startsWith('/settings') ||
+    path.startsWith('/billing') ||
+    path.startsWith('/admin')
 
   const isAuthPage = request.nextUrl.pathname === '/sign-in' ||
     request.nextUrl.pathname === '/sign-up'

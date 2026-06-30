@@ -46,14 +46,8 @@ export default function AppShell({ children, activeNav }: AppShellProps) {
           <span>Vibe-Check</span>
         </Link>
         <nav>
-          <Link href="/dashboard" className={activeNav === 'dashboard' ? 'active' : ''}>
-            <span className="nav-ico">◉</span> Overview
-          </Link>
-          <Link href="/dashboard" className={activeNav === 'urls' ? 'active' : ''}>
-            <span className="nav-ico">≡</span> My URLs
-          </Link>
-          <Link href="/dashboard" className={activeNav === 'reports' ? 'active' : ''}>
-            <span className="nav-ico">▤</span> Reports
+          <Link href="/dashboard" className={activeNav === 'dashboard' || activeNav === 'urls' || activeNav === 'reports' ? 'active' : ''}>
+            <span className="nav-ico">◉</span> Dashboard
           </Link>
           <Link href="/repos" className={activeNav === 'repos' ? 'active' : ''}>
             <span className="nav-ico">❮❯</span> Repos
@@ -79,12 +73,22 @@ export default function AppShell({ children, activeNav }: AppShellProps) {
             </>
           )}
           <div className="nav-sep">Help</div>
-          <Link href="/docs">
-            <span className="nav-ico">?</span> Docs &amp; methodology
+          <Link href="/trust">
+            <span className="nav-ico">?</span> How we scan
           </Link>
-          <a href="mailto:support@vibe-check.dev">
+          <a href="mailto:support@vibe-check-app.com">
             <span className="nav-ico">@</span> Email support
           </a>
+          <div className="nav-sep">Legal</div>
+          <Link href="/terms">
+            <span className="nav-ico">§</span> Terms of service
+          </Link>
+          <Link href="/privacy">
+            <span className="nav-ico">§</span> Privacy policy
+          </Link>
+          <Link href="/terms#refund">
+            <span className="nav-ico">§</span> Refund policy
+          </Link>
         </nav>
         <div className="plan-chip">
           <div className="plan-chip-row">

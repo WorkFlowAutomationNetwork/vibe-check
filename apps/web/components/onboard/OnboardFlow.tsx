@@ -276,7 +276,7 @@ export default function OnboardFlow() {
             </span>
           </label>
 
-          <div className="onb-helper">We&apos;ll verify you own this before scanning. <b>Read-only</b> — we never write to your app or store credentials.</div>
+          <div className="onb-helper">We&apos;ll verify you own this before scanning. <b>Non-destructive</b> — we never modify your app or store credentials.</div>
 
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>
             <span>◯ subdomains: scan separately, count as separate URLs</span>
@@ -425,8 +425,8 @@ export default function OnboardFlow() {
                 <li>
                   <span className="nl-num">03</span>
                   <div>
-                    <b>Report lands in ~60 seconds</b>
-                    <small>Grade, findings, prioritized fix list.</small>
+                    <b>Report lands in as little as 60 seconds</b>
+                    <small>Passive ~60 s · active 2–3 min · deep up to 7 min.</small>
                   </div>
                 </li>
               </ol>
@@ -475,7 +475,12 @@ export default function OnboardFlow() {
           <div style={{ fontSize: 48, marginBottom: 16 }}>⟳</div>
           <h1>Scan in progress</h1>
           <p className="lede">
-            Scanning <strong>{domain}</strong>. This usually takes 30–60 seconds.
+            Scanning <strong>{domain}</strong>.{' '}
+            {state.scanType === 'passive'
+              ? 'This usually takes about 60 seconds.'
+              : state.scanType === 'deep'
+              ? 'Deep scans take up to 7 minutes — grab a coffee.'
+              : 'Active scans usually take 2–3 minutes.'}
           </p>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-mute)', marginBottom: 24 }}>
             Status: {state.scanStatus}

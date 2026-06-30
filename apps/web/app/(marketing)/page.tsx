@@ -46,7 +46,7 @@ export default async function LandingPage() {
         <div className="container">
           <div className="hero-eyebrow"><span className="dot" /> Scanning live · {sitesChecked} sites checked</div>
           <h1>Your app passed the <span className="strike">vibe check</span>.<br />But did it pass a <span className="accent">security check</span>?</h1>
-          <p className="sub">Shipped something with Claude, Cursor, or v0 at 2am? We probe the things you probably forgot about. Free scan in 60 seconds, no account.</p>
+          <p className="sub">Shipped something with Claude, Cursor, or v0 at 2am? We probe the things you probably forgot about. Verify ownership once, get a graded report in as little as 60 seconds.</p>
 
           <div className="scan" id="hero-scan">
             <div className="prefix"><span>https://</span></div>
@@ -54,9 +54,9 @@ export default async function LandingPage() {
             <Link href="/sign-up" className="scan-btn">Scan now <span>→</span></Link>
           </div>
           <div className="scan-note">
-            <span>◯ Free scan takes ~60 seconds</span>
-            <span>◯ No account, no card, no Slack DM</span>
-            <span>◯ Read-only · we don&apos;t touch your data</span>
+            <span>◯ Free scan ~60 s · active 2–3 min · deep up to 7 min</span>
+            <span>◯ Ownership verified once, then you&apos;re done</span>
+            <span>◯ Non-destructive · we never modify your data</span>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ export default async function LandingPage() {
             <div className="pill"><span className="pillIcon">!</span> avg <b>{avgVulns}</b> vulnerabilities found</div>
             <div className="pill"><span className="pillIcon">⎇</span><b>{repoScansRun}</b> repo scans run</div>
             <div className="pill"><span className="pillIcon">🔑</span><b>{secretsFound}</b> secrets caught</div>
-            <div className="pill"><span className="pillIcon">~</span> takes <b>60s</b> end-to-end</div>
+            <div className="pill"><span className="pillIcon">~</span> free scan in <b>~60s</b></div>
             <div className="pill"><span className="pillIcon">$</span> from <b>$0</b>, no card needed</div>
           </div>
           <div className="marquee-wrap">
@@ -94,7 +94,7 @@ export default async function LandingPage() {
               <div className="label-mono">What we check</div>
               <h2>The boring stuff your AI didn&apos;t think about.</h2>
             </div>
-            <p>Six categories, ~180 individual probes. Most apps fail at least four of them on the first scan. That&apos;s fine — we tell you exactly which ones, in plain English, with fix priority.</p>
+            <p>50+ checks across 8 modules — and more added regularly. Most apps fail at least four on the first scan. That&apos;s fine — we tell you exactly which ones, in plain English, with fix priority.</p>
           </div>
 
           <div className="check-grid">
@@ -105,17 +105,16 @@ export default async function LandingPage() {
               <div className="more"><span>strict-transport-security</span><span>content-security-policy</span></div>
             </div>
             <div className="check-card">
-              <div className="ico">⚿</div>
-              <h3>Auth &amp; access control</h3>
-              <p>Are your /admin routes actually protected, or just hidden? We try to walk in. You&apos;d be shocked how often it works.</p>
-              <div className="more"><span>route guards</span><span>IDOR</span><span>cookies</span></div>
+              <div className="ico">TLS</div>
+              <h3>TLS &amp; certificate health</h3>
+              <p>Expired certs, weak cipher suites, outdated protocol versions. We run sslyze so you don&apos;t find out from your users.</p>
+              <div className="more"><span>cert expiry</span><span>cipher suites</span><span>protocol versions</span></div>
             </div>
-            <div className="check-card ai">
-              <div className="ico">AI</div>
-              <span className="tag">For AI apps</span>
-              <h3>Prompt injection</h3>
-              <p>Your system prompt is currently one clever DM away from leaking. We try ~40 known jailbreaks against your wrapper.</p>
-              <div className="more"><span>system prompt leak</span><span>tool abuse</span></div>
+            <div className="check-card">
+              <div className="ico">⎇</div>
+              <h3>Git secret scanning</h3>
+              <p>API keys, tokens, and passwords committed to your repo history — then forgotten. We scan every commit, not just HEAD.</p>
+              <div className="more"><span>full history</span><span>stripe keys</span><span>aws credentials</span></div>
             </div>
             <div className="check-card">
               <div className="ico">/&gt;</div>
@@ -124,10 +123,10 @@ export default async function LandingPage() {
               <div className="more"><span>/api/*</span><span>/.well-known</span><span>/_next</span></div>
             </div>
             <div className="check-card">
-              <div className="ico">{"{ }"}</div>
-              <h3>Dependency CVEs</h3>
-              <p>That npm package Cursor installed three weeks ago has a CVE now. We cross-check your bundle against the live CVE feed.</p>
-              <div className="more"><span>npm</span><span>pypi</span><span>cargo</span></div>
+              <div className="ico">⏱</div>
+              <h3>Rate limiting</h3>
+              <p>Login endpoints, reset flows, and public APIs. We probe to see if an attacker could hammer them without getting blocked.</p>
+              <div className="more"><span>login brute-force</span><span>reset abuse</span><span>api throttling</span></div>
             </div>
             <div className="check-card">
               <div className="ico">⚙</div>
@@ -167,13 +166,13 @@ export default async function LandingPage() {
             <div className="step">
               <div className="num">STEP 02 <span className="dotline" /></div>
               <h3>We probe, test, simulate.</h3>
-              <p>180 checks across six categories. Active mode tries known exploits on your routes — read-only, never destructive.</p>
+              <p>50+ checks across 8 modules. Active mode probes your real endpoints — non-destructive, we never modify your data.</p>
               <div className="demo">
                 <div className="row"><b>tls/hsts</b><span className="ok">PASS</span></div>
                 <div className="row"><b>csp policy</b><span className="bad">FAIL</span></div>
-                <div className="row"><b>auth bypass</b><span className="bad">FAIL</span></div>
-                <div className="row"><b>cve scan</b><span className="ok">PASS</span></div>
-                <div className="row"><b>prompt inject</b><span className="pending">running…</span></div>
+                <div className="row"><b>rate limiting</b><span className="bad">FAIL</span></div>
+                <div className="row"><b>secrets scan</b><span className="ok">PASS</span></div>
+                <div className="row"><b>nuclei templates</b><span className="pending">running…</span></div>
               </div>
             </div>
             <div className="step">
@@ -181,10 +180,10 @@ export default async function LandingPage() {
               <h3>Get a prioritized fix list.</h3>
               <p>Each issue is rated by severity and reachability. We tell you what to fix first and copy-paste the exact code or config.</p>
               <div className="demo">
-                <div className="row"><span style={{ color: 'var(--danger)', fontWeight: 700 }}>P0</span><span><b>Public admin route</b></span></div>
+                <div className="row"><span style={{ color: 'var(--danger)', fontWeight: 700 }}>P0</span><span><b>Supabase table exposed</b></span></div>
                 <div className="row"><span style={{ color: '#D88934', fontWeight: 700 }}>P1</span><span><b>Missing CSP header</b></span></div>
-                <div className="row"><span style={{ color: '#D88934', fontWeight: 700 }}>P1</span><span><b>Outdated next-auth</b></span></div>
-                <div className="row"><span style={{ color: 'var(--ink-mute)', fontWeight: 700 }}>P2</span><span><b>X-Frame missing</b></span></div>
+                <div className="row"><span style={{ color: '#D88934', fontWeight: 700 }}>P1</span><span><b>No rate limiting on login</b></span></div>
+                <div className="row"><span style={{ color: 'var(--ink-mute)', fontWeight: 700 }}>P2</span><span><b>X-Frame-Options missing</b></span></div>
                 <div className="row"><span style={{ color: 'var(--ink-mute)', fontWeight: 700 }}>P3</span><span><b>Server header leaks</b></span></div>
               </div>
             </div>
@@ -210,7 +209,7 @@ export default async function LandingPage() {
               <p className="tier-sub">Passive scan, basic report. Good enough to know if you&apos;re actually in trouble.</p>
               <ul>
                 <li>Passive HTTP &amp; DNS analysis</li>
-                <li>Top 25 vulnerability checks</li>
+                <li>Security headers &amp; TLS checks</li>
                 <li>1 URL</li>
                 <li>Plain-text report (web only)</li>
                 <li>No badge, no PDF, no monitoring</li>
@@ -223,11 +222,11 @@ export default async function LandingPage() {
               <div className="tier-price">$9<span className="per">/ scan</span></div>
               <p className="tier-sub">Full active audit. The &#34;I&apos;m launching Tuesday and want to be sure&#34; tier.</p>
               <ul>
-                <li>All 180 checks, active mode</li>
+                <li>50+ checks, active mode</li>
                 <li>Shareable HTML report + PDF export</li>
                 <li>&#34;Vibe-Checked ✓&#34; badge, valid 30 days</li>
-                <li>Re-run for 30 days, free</li>
-                <li>1 URL, expires after scan</li>
+                <li>Re-run anytime, free</li>
+                <li>1 URL</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Buy a scan →</Link>
             </div>
@@ -239,8 +238,8 @@ export default async function LandingPage() {
               <ul>
                 <li>Everything in One-off</li>
                 <li>Deploy-triggered re-scans (webhook)</li>
-                <li>CVE alerts in Slack / email</li>
-                <li>Badge stays active automatically</li>
+                <li>Email alerts on new findings</li>
+                <li>Badge renewed on each re-scan</li>
                 <li>Up to 5 URLs</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Start monitoring →</Link>
@@ -267,13 +266,13 @@ export default async function LandingPage() {
                 <span className="vibe-badge" style={{ background: 'var(--ink)', color: 'white' }}>
                   <span className="badge-mark" style={{ background: 'var(--lime)', color: 'var(--ink)' }}>✓</span>
                   <span style={{ color: 'white' }}>Vibe-Checked</span>
-                  <span className="v-meta" style={{ color: '#9a9a93' }}>A · 180/180</span>
+                  <span className="v-meta" style={{ color: '#9a9a93' }}>Grade A · 2026</span>
                 </span>
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginTop: 6 }}>
                 drop-in snippet:
               </div>
-              <pre className="snippet-pre">{`<script src="https://vibe-check.dev/b.js" data-id="vc_8f3a"></script>`}</pre>
+              <pre className="snippet-pre">{`<a href="https://vibe-check-app.com/report/…/public">\n  <img src="https://vibe-check-app.com/api/badge/…/image"\n       alt="Vibe-Checked" height="20" />\n</a>`}</pre>
             </div>
 
             <div className="mock-site">
@@ -308,7 +307,7 @@ export default async function LandingPage() {
       <section className="cta-final" id="cta">
         <div className="container">
           <div className="label-mono" style={{ justifyContent: 'center', display: 'inline-flex' }}>▼ Last thing</div>
-          <h2>Ship with confidence.<br />Takes 60 seconds.</h2>
+          <h2>Ship with confidence.<br />As little as 60 seconds.</h2>
           <p>You&apos;ve already shipped. We&apos;re just asking if you&apos;d like to know what&apos;s underneath.</p>
           <div className="scan" style={{ margin: '0 auto' }}>
             <div className="prefix"><span>https://</span></div>
@@ -317,8 +316,8 @@ export default async function LandingPage() {
           </div>
           <div className="scan-note" style={{ justifyContent: 'center' }}>
             <span>◯ Free scan</span>
-            <span>◯ No account</span>
-            <span>◯ 60 seconds</span>
+            <span>◯ Verify once, scan anytime</span>
+            <span>◯ as little as 60 s</span>
           </div>
         </div>
       </section>
@@ -329,6 +328,7 @@ export default async function LandingPage() {
           <div className="links">
             <Link href="/trust">Trust</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/terms#refund">Refund policy</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/pricing">Pricing</Link>
           </div>

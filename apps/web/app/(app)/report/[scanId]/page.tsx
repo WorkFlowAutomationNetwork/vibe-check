@@ -73,7 +73,7 @@ export default async function ReportPage({ params }: Props) {
       <AppShell activeNav="reports">
         <main className="app-main">
           <Link href="/dashboard" className="back-link">← back to dashboard</Link>
-          <ScanPollingView scanId={scan.id} />
+          <ScanPollingView scanId={scan.id} scanType={scan.scan_type} />
         </main>
       </AppShell>
     )

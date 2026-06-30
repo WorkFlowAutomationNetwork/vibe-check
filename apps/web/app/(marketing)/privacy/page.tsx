@@ -53,17 +53,11 @@ export default function PrivacyPage() {
 
       <h3>5. How long we keep it (retention)</h3>
       <ul>
-        <li><strong>Scan findings &amp; metadata:</strong> retained for <strong>[12]</strong> months, after which raw finding detail is purged; we may keep grade/score history for trend charts.</li>
-        <li><strong>Activity &amp; webhook logs:</strong> retained for <strong>[90]</strong> days, then purged.</li>
-        <li><strong>Deleted accounts:</strong> URLs, scans, findings, badges, and stored report PDFs are hard-deleted or irreversibly anonymised within <strong>[30]</strong> days of account deletion.</li>
+        <li><strong>Scan findings &amp; metadata:</strong> kept for the lifetime of your account so your report history remains accessible. When you delete your account, all findings are purged as described below.</li>
+        <li><strong>Report PDFs:</strong> stored for the lifetime of your account and deleted when your account is deleted.</li>
+        <li><strong>Activity &amp; webhook logs:</strong> retained for <strong>30 days</strong>, then purged.</li>
+        <li><strong>Deleted accounts:</strong> URLs, scans, findings, badges, and stored report PDFs are hard-deleted or irreversibly anonymised within <strong>30 days</strong> of account deletion.</li>
       </ul>
-      <p>
-        <strong>[Implementation note — not customer-facing:]</strong> the retention schedule
-        above must be enforced by a scheduled purge job (Supabase pg_cron or a Celery beat
-        task), and account deletion must cascade to Supabase Storage PDFs as well as database
-        rows. Confirm <code>auth.admin.deleteUser</code> cascades to <code>profiles</code> and
-        all downstream tables before publishing these numbers.
-      </p>
 
       <h3>6. Your rights</h3>
       <p>
@@ -91,7 +85,7 @@ export default function PrivacyPage() {
       <h3>9. Contact &amp; complaints</h3>
       <p>
         Data protection contact: <strong>[LEGAL ENTITY / DPO NAME]</strong>,{' '}
-        <span style={{ fontFamily: 'var(--font-mono)' }}>privacy@[YOUR-DOMAIN]</span>,{' '}
+        <span style={{ fontFamily: 'var(--font-mono)' }}>privacy@vibe-check-app.com</span>,{' '}
         <strong>[POSTAL ADDRESS]</strong>. EU/UK users may also lodge a complaint with their
         local supervisory authority.
       </p>

@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 
 interface Props {
   scanId: string
+  scanType?: string
 }
 
-export default function ScanPollingView({ scanId }: Props) {
+export default function ScanPollingView({ scanId, scanType }: Props) {
   const router = useRouter()
   const [status, setStatus] = useState<string>('pending')
   const [failed, setFailed] = useState(false)
@@ -54,7 +55,11 @@ export default function ScanPollingView({ scanId }: Props) {
       <div style={{ fontSize: 48, marginBottom: 16, animation: 'spin 2s linear infinite', display: 'inline-block' }}>⟳</div>
       <h2 style={{ fontFamily: 'var(--font-display)', marginBottom: 8 }}>Scan in progress</h2>
       <p style={{ color: 'var(--ink-soft)', marginBottom: 8 }}>
-        Running security checks — this usually takes 30–60 seconds.
+        {scanType === 'passive'
+          ? 'Running security checks — this usually takes about 60 seconds.'
+          : scanType === 'deep'
+          ? 'Running deep scan — this can take up to 7 minutes.'
+          : 'Running security checks — this usually takes 2–3 minutes.'}
       </p>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)' }}>
         status: {status}

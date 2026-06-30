@@ -17,16 +17,16 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase()
   const supabase = createServiceClient()
-  const { error, count } = await supabase
+  const { error, data } = await supabase
     .from('waitlist')
     .upsert({ email, source: 'prelaunch' }, { onConflict: 'email', ignoreDuplicates: true })
-    .select('*', { count: 'exact', head: true })
+    .select('email')
   if (error) {
     console.error('[prelaunch/notify] waitlist upsert failed:', error.message)
   }
 
-  // count > 0 means a row was actually inserted (not a duplicate)
-  if (!error && count && count > 0) {
+  // data has rows only when a new row was inserted; duplicates are ignored and return empty
+  if (!error && data && data.length > 0) {
     const { subject, html } = waitlistEmail(email)
     void sendEmail({ to: email, subject, html })
   }

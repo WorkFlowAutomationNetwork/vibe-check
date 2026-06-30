@@ -103,11 +103,35 @@ export default function TermsPage() {
         use after changes take effect constitutes acceptance.
       </p>
 
-      <h3>7. Payments</h3>
+      <h3 id="refund">7. Payments &amp; refunds</h3>
       <p>
-        Paid plans are billed through our payment processor, Stripe. We never receive or store
-        your full card details. Fees, billing cycles, and refund terms are as described at
-        checkout. <strong>[Confirm refund / cancellation policy with counsel.]</strong>
+        Paid plans are billed through Stripe. We never receive or store your full card details.
+      </p>
+      <p>
+        Our services come with guarantees under the Australian Consumer Law (&ldquo;ACL&rdquo;)
+        that cannot be excluded. You are entitled to a remedy for a major failure of the Service
+        and to have the Service re-supplied if it fails to be of acceptable quality.
+      </p>
+      <p>
+        In addition to your ACL rights, our practical policy is:
+      </p>
+      <ul>
+        <li>
+          <strong>One-off scan (Starter):</strong> if your scan fails to complete or produces no
+          report due to a fault on our end, contact us within 14 days and we will re-run the scan
+          at no charge or issue a full refund. We do not offer refunds for scans that complete
+          successfully — the grade is an automated, point-in-time result and may not match your
+          expectations.
+        </li>
+        <li>
+          <strong>Monthly subscription (Monitor):</strong> you may cancel at any time. No further
+          charges are made after cancellation. We do not offer pro-rata refunds for unused days in
+          a billing period, except where the Service was materially unavailable through our fault.
+        </li>
+      </ul>
+      <p>
+        Nothing in these Terms limits or excludes any right or remedy you have under the ACL or
+        any other applicable consumer protection law.
       </p>
 
       <h3>8. Termination</h3>
@@ -128,7 +152,7 @@ export default function TermsPage() {
       <h3>10. Contact</h3>
       <p>
         Questions about these Terms: <strong>[LEGAL ENTITY NAME]</strong>,{' '}
-        <span style={{ fontFamily: 'var(--font-mono)' }}>legal@[YOUR-DOMAIN]</span>,{' '}
+        <span style={{ fontFamily: 'var(--font-mono)' }}>legal@vibe-check-app.com</span>,{' '}
         <strong>[POSTAL ADDRESS]</strong>.
       </p>
     </LegalShell>
