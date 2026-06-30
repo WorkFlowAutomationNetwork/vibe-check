@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/client'
 import { scanCompleteEmail } from '@/lib/email/templates/scan-complete'
 import { scanFailedEmail } from '@/lib/email/templates/scan-failed'
+
+// Constant-time comparison of the shared internal key. Returns false on any
+// length mismatch (timingSafeEqual throws on unequal-length buffers) so we
+// never leak validity through early return / timing — matching the scanner
+// side's hmac.compare_digest discipline.
+function internalKeyValid(provided: string | null): boolean {
+  const expected = process.env.SCANNER_INTERNAL_KEY
+  if (!provided || !expected) return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
 
 const NotifySchema = z.discriminatedUnion('status', [
   z.object({
@@ -23,8 +37,7 @@ const NotifySchema = z.discriminatedUnion('status', [
 ])
 
 export async function POST(request: Request) {
-  const key = request.headers.get('x-internal-key')
-  if (!key || key !== process.env.SCANNER_INTERNAL_KEY) {
+  if (!internalKeyValid(request.headers.get('x-internal-key'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
