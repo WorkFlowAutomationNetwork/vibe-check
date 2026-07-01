@@ -26,11 +26,6 @@ function formatExpiry(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function formatMonth(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-}
-
 export default function BadgeClient({ badge, appUrl }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
   const [publicReportEnabled, setPublicReportEnabled] = useState(badge?.public_report_enabled ?? false)
@@ -122,27 +117,7 @@ export default function BadgeClient({ badge, appUrl }: Props) {
               flexWrap: 'wrap',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  background: 'var(--ink)',
-                  color: 'var(--lime)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  padding: '6px 12px',
-                  borderRadius: 3,
-                  letterSpacing: '0.04em',
-                }}>
-                  <span style={{ fontSize: 14 }}>✓</span>
-                  Vibe-Checked
-                  {badge.grade && (
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: 8 }}>
-                      {badge.grade} · {formatMonth(badge.completed_at)}
-                    </span>
-                  )}
-                </div>
+                <img src={badgeImgSrc} alt="Vibe-Checked badge" width={168} height={34} />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{displayUrl}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginTop: 2 }}>
