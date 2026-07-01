@@ -3,9 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockGetUser = vi.fn()
 const mockUpsert = vi.fn().mockResolvedValue({ error: null })
 const mockUpdateEq = vi.fn().mockResolvedValue({ error: null })
+const mockEntitlementsSingle = vi.fn().mockResolvedValue({ data: { can_integrations: true } })
 
 vi.mock('@/lib/supabase/server', () => ({
-  createServerClient: () => ({ auth: { getUser: mockGetUser } }),
+  createServerClient: () => ({
+    auth: { getUser: mockGetUser },
+    from: () => ({ select: () => ({ single: mockEntitlementsSingle }) }),
+  }),
   createServiceClient: () => ({
     from: (table: string) => ({
       upsert: mockUpsert,
@@ -36,6 +40,15 @@ describe('POST /api/integrations/vercel', () => {
     const { POST } = await import('./route')
     const res = await POST(makeRequest('POST'))
     expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when plan does not include integrations', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    mockEntitlementsSingle.mockResolvedValueOnce({ data: { can_integrations: false } })
+    const { POST } = await import('./route')
+    const res = await POST(makeRequest('POST'))
+    expect(res.status).toBe(403)
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 
   it('upserts an integrations row and returns a webhookUrl', async () => {

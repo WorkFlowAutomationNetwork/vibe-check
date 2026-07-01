@@ -85,7 +85,15 @@ export async function PATCH(
   // Build profile update
   const profileUpdate: Record<string, unknown> = {}
   if (name !== undefined) profileUpdate.name = name
-  if (plan !== undefined) profileUpdate.plan = plan
+  if (plan !== undefined) {
+    profileUpdate.plan = plan
+    // Mirror the checkout webhook: a manually-granted starter plan still
+    // expires in 30 days (user_plan() reads it back as 'free' after, per
+    // migration 20260701000030); other plans have no fixed window.
+    profileUpdate.plan_expires_at = plan === 'starter'
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      : null
+  }
   if (is_admin !== undefined) profileUpdate.is_admin = is_admin
 
   if (Object.keys(profileUpdate).length > 0) {
@@ -136,7 +144,12 @@ export async function POST(
 
   const profileUpdate: Record<string, unknown> = {}
   if (name !== undefined) profileUpdate.name = name
-  if (plan !== undefined) profileUpdate.plan = plan
+  if (plan !== undefined) {
+    profileUpdate.plan = plan
+    profileUpdate.plan_expires_at = plan === 'starter'
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      : null
+  }
   if (is_admin !== undefined) profileUpdate.is_admin = is_admin
 
   if (Object.keys(profileUpdate).length > 0) {

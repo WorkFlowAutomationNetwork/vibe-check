@@ -52,3 +52,9 @@ apps/web/.firecrawl/
 
 # Internal security review notes
 Security-feedback.md
+
+# Development docs (status tracking, QA checklists, superpowers plans/specs) —
+# not tracked in git; a leaked API key ended up committed in a plan doc once.
+# See CLAUDE.md "Local-only development docs" for what to do if these are missing.
+docs/
+PROJECT_STATUS.md

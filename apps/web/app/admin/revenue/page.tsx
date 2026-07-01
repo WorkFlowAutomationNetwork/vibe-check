@@ -27,7 +27,7 @@ export default async function AdminRevenuePage() {
   const starterUsers = profiles.filter(p => p.plan === 'starter').length
   const monitorUsers = profiles.filter(p => p.plan === 'monitor').length
 
-  const mrr = starterUsers * 9 + monitorUsers * 19
+  const mrr = starterUsers * 15 + monitorUsers * 35
   const arr = mrr * 12
 
   const scansThisMonth = scansThisMonthResult.count ?? 0
@@ -102,14 +102,14 @@ export default async function AdminRevenuePage() {
             <div className="admin-stat-sub">$0 MRR · passive scans only</div>
           </div>
           <div className="admin-stat violet">
-            <div className="admin-stat-label">Starter ($9 one-off)</div>
+            <div className="admin-stat-label">Starter ($15 one-off)</div>
             <div className="admin-stat-value">{starterUsers}</div>
-            <div className="admin-stat-sub">${starterUsers * 9} recognised revenue</div>
+            <div className="admin-stat-sub">${starterUsers * 15} recognised revenue</div>
           </div>
           <div className="admin-stat lime">
-            <div className="admin-stat-label">Monitor ($19/mo)</div>
+            <div className="admin-stat-label">Monitor ($35/mo)</div>
             <div className="admin-stat-value">{monitorUsers}</div>
-            <div className="admin-stat-sub">${monitorUsers * 19}/mo recurring</div>
+            <div className="admin-stat-sub">${monitorUsers * 35}/mo recurring</div>
           </div>
         </div>
 
@@ -186,8 +186,8 @@ export default async function AdminRevenuePage() {
                 Revenue opportunity
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-                {freeUsers} free users. If <strong>10%</strong> convert to Starter: <strong>+${Math.round(freeUsers * 0.1) * 9}/mo</strong>.<br />
-                If <strong>5%</strong> convert to Monitor: <strong>+${Math.round(freeUsers * 0.05) * 19}/mo</strong>.
+                {freeUsers} free users. If <strong>10%</strong> convert to Starter: <strong>+${Math.round(freeUsers * 0.1) * 15}/mo</strong>.<br />
+                If <strong>5%</strong> convert to Monitor: <strong>+${Math.round(freeUsers * 0.05) * 35}/mo</strong>.
               </div>
             </div>
           </div>

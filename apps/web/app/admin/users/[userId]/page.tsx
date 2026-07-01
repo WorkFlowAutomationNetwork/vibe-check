@@ -180,7 +180,7 @@ export default async function AdminUserDetailPage({
                     {PLAN_OPTIONS.map(p => (
                       <option key={p} value={p}>
                         {p.charAt(0).toUpperCase() + p.slice(1)}
-                        {p === 'free' ? ' (Free)' : p === 'starter' ? ' ($9 one-off)' : ' ($19/mo)'}
+                        {p === 'free' ? ' (Free)' : p === 'starter' ? ' ($15 one-off)' : ' ($35/mo)'}
                       </option>
                     ))}
                   </select>

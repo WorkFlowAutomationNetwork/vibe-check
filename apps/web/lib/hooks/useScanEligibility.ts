@@ -22,24 +22,17 @@ export function useScanEligibility(): ScanEligibility {
         return
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan, is_admin')
-        .eq('id', user.id)
-        .single()
-
-      const plan = profile?.plan ?? 'free'
-      const isAdmin = profile?.is_admin ?? false
-
-      const { data: limits } = await supabase
-        .from('plan_limits')
-        .select('allowed_scan_types')
-        .eq('plan', plan)
+      // my_entitlements computes the *effective* plan (an expired Starter
+      // purchase reads back as 'free' — see migration 20260701000030), so
+      // this always matches what the scans-insert RLS policy will actually allow.
+      const { data: entitlements } = await supabase
+        .from('my_entitlements')
+        .select('allowed_scan_types, is_admin')
         .single()
 
       setState({
-        allowedScanTypes: limits?.allowed_scan_types ?? ['passive'],
-        isAdmin,
+        allowedScanTypes: entitlements?.allowed_scan_types ?? ['passive'],
+        isAdmin: entitlements?.is_admin ?? false,
         loading: false,
       })
     })

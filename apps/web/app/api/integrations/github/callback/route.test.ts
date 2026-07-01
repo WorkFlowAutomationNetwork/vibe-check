@@ -19,8 +19,14 @@ vi.mock('@/lib/github/app', () => ({
 const installUpsert = vi.fn()
 const reposUpsert = vi.fn()
 const getUser = vi.fn()
+const entitlementsSingle = vi.fn().mockResolvedValue({
+  data: { can_integrations: true, max_repos: 5, repo_count: 0 },
+})
 vi.mock('@/lib/supabase/server', () => ({
-  createServerClient: () => ({ auth: { getUser } }),
+  createServerClient: () => ({
+    auth: { getUser },
+    from: () => ({ select: () => ({ single: entitlementsSingle }) }),
+  }),
   createServiceClient: () => ({
     from: (table: string) => {
       if (table === 'github_installations') {
@@ -51,6 +57,9 @@ beforeEach(() => {
   ])
   installUpsert.mockResolvedValue({ data: { id: 'inst-row-1' }, error: null })
   reposUpsert.mockResolvedValue({ error: null })
+  entitlementsSingle.mockResolvedValue({
+    data: { can_integrations: true, max_repos: 5, repo_count: 0 },
+  })
   listInstallationRepos.mockResolvedValue([
     { github_repo_id: 10, full_name: 'me/app', default_branch: 'main' },
   ])
@@ -113,5 +122,27 @@ describe('GET github callback', () => {
     const { GET } = await import('./route')
     const res = await GET(makeRequest('code=oauth-code', 'cookie-state-xyz'))
     expect(res.status).toBe(400)
+  })
+
+  it('redirects to billing instead of recording anything when the plan has no integrations', async () => {
+    entitlementsSingle.mockResolvedValueOnce({ data: { can_integrations: false, max_repos: 0, repo_count: 0 } })
+    const { GET } = await import('./route')
+    const res = await GET(makeRequest('code=oauth-code', 'cookie-state-xyz'))
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toContain('/billing?error=requires_monitor')
+    expect(installUpsert).not.toHaveBeenCalled()
+  })
+
+  it('truncates repos to the remaining max_repos slots instead of connecting everything', async () => {
+    entitlementsSingle.mockResolvedValueOnce({ data: { can_integrations: true, max_repos: 5, repo_count: 4 } })
+    listInstallationRepos.mockResolvedValue([
+      { github_repo_id: 10, full_name: 'me/app-1', default_branch: 'main' },
+      { github_repo_id: 11, full_name: 'me/app-2', default_branch: 'main' },
+    ])
+    const { GET } = await import('./route')
+    await GET(makeRequest('code=oauth-code', 'cookie-state-xyz'))
+    expect(reposUpsert).toHaveBeenCalledWith([
+      expect.objectContaining({ github_repo_id: 10, full_name: 'me/app-1' }),
+    ])
   })
 })

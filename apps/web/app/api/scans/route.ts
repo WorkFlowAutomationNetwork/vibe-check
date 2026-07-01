@@ -61,6 +61,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'URL not verified' }, { status: 403 })
   }
 
+  // Friendly pre-check ahead of the RLS backstop (can_run_scan(), migration
+  // 20260701000030) -- without this, a free/expired-Starter user hitting
+  // their scan cap just gets a generic Postgres-error 500.
+  const { data: entitlements } = await supabase
+    .from('my_entitlements')
+    .select('can_run_scan, max_scans_per_month, scans_used_this_period')
+    .single()
+  if (entitlements && !entitlements.can_run_scan) {
+    return NextResponse.json(
+      {
+        error: 'scan_limit_reached',
+        max_scans_per_month: entitlements.max_scans_per_month,
+        scans_used_this_period: entitlements.scans_used_this_period,
+      },
+      { status: 402 },
+    )
+  }
+
   const { data: activeScan } = await supabase
     .from('scans')
     .select('id')

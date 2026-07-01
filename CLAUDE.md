@@ -4,6 +4,20 @@
 
 ---
 
+## Local-only development docs
+
+`PROJECT_STATUS.md` and everything under `docs/` (superpowers plans/specs, manual QA
+checklist, legal review notes) are **gitignored as of 2026-07-01** — they exist locally
+but are not tracked in git and will not be present on a fresh clone or for anyone else
+pulling the repo. This was a deliberate call after a real API key ended up committed in
+plaintext inside a plan doc and had to be rotated (and the leak scrubbed from git history
+via `git filter-repo` the same day).
+
+**If you can't find `PROJECT_STATUS.md` or a `docs/superpowers/...` file this instruction
+references, that's why — it's not missing from the repo, it was never committed.** Tell
+the user directly rather than assuming the project is unbuilt or the doc never existed;
+they'll have the local copy and can re-provide it if needed.
+
 ## Project status
 
 **Always read [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) at the start of every session.**

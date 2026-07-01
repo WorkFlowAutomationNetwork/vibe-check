@@ -25,11 +25,13 @@ function post(email: string) {
 }
 
 function makeClient(upsertResult: { error: any; count?: number | null }, onUpsert?: (row: any) => void) {
+  const { error, count } = upsertResult
+  const data = error ? null : Array.from({ length: count ?? 0 }, () => ({ email: 'x' }))
   return {
     from: () => ({
       upsert: (row: any) => {
         onUpsert?.(row)
-        return { select: () => Promise.resolve(upsertResult) }
+        return { select: () => Promise.resolve({ error, data }) }
       },
     }),
   }

@@ -63,8 +63,8 @@ export default function AdminNewUserPage() {
                   <label>Plan</label>
                   <select name="plan" defaultValue="free">
                     <option value="free">Free</option>
-                    <option value="starter">Starter ($9 one-off)</option>
-                    <option value="monitor">Monitor ($19/mo)</option>
+                    <option value="starter">Starter ($15 one-off)</option>
+                    <option value="monitor">Monitor ($35/mo)</option>
                   </select>
                 </div>
                 <div className="admin-field">

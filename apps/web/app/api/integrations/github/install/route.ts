@@ -8,6 +8,18 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const { data: entitlements } = await supabase
+    .from('my_entitlements')
+    .select('can_integrations')
+    .single()
+  if (!entitlements?.can_integrations) {
+    return NextResponse.redirect(
+      new URL('/billing?error=requires_monitor', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+      { status: 302 },
+    )
+  }
+
   const state = signState({ userId: user.id })
   // Enter via the OAuth authorize URL: it always redirects back to our callback
   // with code+state (whether or not the app is already installed), unlike

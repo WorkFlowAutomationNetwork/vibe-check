@@ -29,9 +29,12 @@ export async function POST(request: Request) {
     case 'customer.subscription.updated': {
       const subscription = event.data.object
       const plan = resolvePlan(subscription.items.data[0]?.price.lookup_key ?? '')
+      // Monitor is a recurring subscription with no fixed plan window (unlike
+      // Starter's one-off 30-day unlock) -- clear any stale expiry, e.g. from
+      // a prior Starter purchase before this customer upgraded.
       await supabase
         .from('profiles')
-        .update({ plan, stripe_subscription_id: subscription.id })
+        .update({ plan, stripe_subscription_id: subscription.id, plan_expires_at: null })
         .eq('stripe_customer_id', subscription.customer as string)
       break
     }
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
       const subscription = event.data.object
       await supabase
         .from('profiles')
-        .update({ plan: 'free', stripe_subscription_id: null })
+        .update({ plan: 'free', stripe_subscription_id: null, plan_expires_at: null })
         .eq('stripe_customer_id', subscription.customer as string)
       break
     }
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
       // and not dependent on a mutable email.
       const userId = session.client_reference_id ?? session.metadata?.user_id
       if (session.customer && userId) {
-        const update: { stripe_customer_id: string; plan?: 'starter' | 'monitor' } = {
+        const update: { stripe_customer_id: string; plan?: 'starter' | 'monitor'; plan_expires_at?: string | null } = {
           stripe_customer_id: session.customer as string,
         }
         // One-time purchases (mode: 'payment', e.g. Starter) have no
@@ -66,6 +69,12 @@ export async function POST(request: Request) {
           const metadataPlan = session.metadata?.plan
           if (metadataPlan === 'starter' || metadataPlan === 'monitor') {
             update.plan = metadataPlan
+            // Starter is a 30-day plan window, not a permanent unlock --
+            // user_plan() reads this back as 'free' once it passes (see
+            // migration 20260701000030). Re-purchasing simply resets the clock.
+            update.plan_expires_at = metadataPlan === 'starter'
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              : null
           }
         }
         await supabase.from('profiles').update(update).eq('id', userId)

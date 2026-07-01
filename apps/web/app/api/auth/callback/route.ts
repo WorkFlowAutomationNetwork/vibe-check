@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       const user = data.user
       if (user?.email && isNewUser(user.created_at)) {
         const { subject, html } = welcomeEmail(user.email)
-        void sendEmail({ to: user.email, subject, html })
+        await sendEmail({ to: user.email, subject, html })
       }
       return NextResponse.redirect(`${origin}${next}`)
     }

@@ -199,7 +199,7 @@ export default async function LandingPage() {
               <div className="label-mono">Pricing</div>
               <h2>One-off audit, or always-on. Your call.</h2>
             </div>
-            <p>Free scan is genuinely free, forever. Pay only if you want active probes, a public badge, or continuous monitoring on every deploy.</p>
+            <p>One free passive scan a month, no card required. Pay only if you want active probes, a public badge, or continuous monitoring on every deploy.</p>
           </div>
 
           <div className="pricing">
@@ -210,7 +210,7 @@ export default async function LandingPage() {
               <ul>
                 <li>Passive HTTP &amp; DNS analysis</li>
                 <li>Security headers &amp; TLS checks</li>
-                <li>1 URL</li>
+                <li>1 URL, 1 scan per month</li>
                 <li>Plain-text report (web only)</li>
                 <li>No badge, no PDF, no monitoring</li>
               </ul>
@@ -219,28 +219,29 @@ export default async function LandingPage() {
 
             <div className="tier highlight">
               <div className="tier-name">One-off <span className="badge-best">most picked</span></div>
-              <div className="tier-price">$9<span className="per">/ scan</span></div>
+              <div className="tier-price">$15<span className="per">/ scan</span></div>
               <p className="tier-sub">Full active audit. The &#34;I&apos;m launching Tuesday and want to be sure&#34; tier.</p>
               <ul>
-                <li>50+ checks, active mode</li>
+                <li>Active-mode checks: backend exposure, leaked secrets, rate-limiting</li>
                 <li>Shareable HTML report + PDF export</li>
                 <li>&#34;Vibe-Checked ✓&#34; badge, valid 30 days</li>
-                <li>Re-run anytime, free</li>
-                <li>1 URL</li>
+                <li>1 URL, 1 successful scan included</li>
+                <li>30-day unlock — reverts to Free afterward</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Buy a scan →</Link>
             </div>
 
             <div className="tier">
               <div className="tier-name">Monitoring</div>
-              <div className="tier-price">$19<span className="per">/ month</span></div>
+              <div className="tier-price">$35<span className="per">/ month</span></div>
               <p className="tier-sub">For sites under active development. Catches regressions before users do.</p>
               <ul>
-                <li>Everything in One-off</li>
+                <li>Everything in One-off, unlimited scans</li>
+                <li>Full GitHub + Vercel integration</li>
                 <li>Deploy-triggered re-scans (webhook)</li>
                 <li>Email alerts on new findings</li>
                 <li>Badge renewed on each re-scan</li>
-                <li>Up to 5 URLs</li>
+                <li>Up to 5 URLs, 5 connected repos</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Start monitoring →</Link>
             </div>

@@ -45,7 +45,7 @@ export default async function AdminSubscriptionsPage() {
 
   const starterCount = subs.filter(s => s.plan === 'starter').length
   const monitorCount = subs.filter(s => s.plan === 'monitor').length
-  const estimatedMRR = starterCount * 9 + monitorCount * 19
+  const estimatedMRR = starterCount * 15 + monitorCount * 35
 
   const fmt = (iso: string) =>
     new Date(iso).toLocaleDateString('en-AU', {
@@ -70,12 +70,12 @@ export default async function AdminSubscriptionsPage() {
             <div className="admin-stat-sub">{subs.length} paying accounts</div>
           </div>
           <div className="admin-stat violet">
-            <div className="admin-stat-label">Starter ($9)</div>
+            <div className="admin-stat-label">Starter ($15)</div>
             <div className="admin-stat-value">{starterCount}</div>
             <div className="admin-stat-sub">one-off scan accounts</div>
           </div>
           <div className="admin-stat">
-            <div className="admin-stat-label">Monitor ($19/mo)</div>
+            <div className="admin-stat-label">Monitor ($35/mo)</div>
             <div className="admin-stat-value">{monitorCount}</div>
             <div className="admin-stat-sub">recurring subscriptions</div>
           </div>

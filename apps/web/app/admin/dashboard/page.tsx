@@ -136,7 +136,7 @@ export default async function AdminDashboardPage() {
               <span style={{ color: 'var(--ink-mute)' }}>Free</span>{' '}
               <span style={{ color: 'var(--violet)', fontWeight: 700 }}>{stats.free_users}</span>
               {'  ·  '}
-              <span style={{ color: 'var(--ink-mute)' }}>/$9</span>{' '}
+              <span style={{ color: 'var(--ink-mute)' }}>/$15</span>{' '}
               <span style={{ color: 'var(--violet)', fontWeight: 700 }}>{stats.starter_users}</span>
               {'  ·  '}
               <span style={{ color: 'var(--ink-mute)' }}>/mo</span>{' '}

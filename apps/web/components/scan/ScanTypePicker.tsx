@@ -27,17 +27,17 @@ const SCAN_TYPES: ScanTypeDef[] = [
     value: 'active',
     label: 'Active Scan',
     summary: 'Everything in Passive, plus exposure checks against your live backend.',
-    checks: ['Public Supabase data exposure'],
+    checks: ['Public Supabase/storage data exposure', 'Leaked secrets in JS bundles', 'Login rate-limiting'],
     requiresPlan: 'Starter',
     comingSoon: false,
   },
   {
     value: 'deep',
     label: 'Deep Scan',
-    summary: 'Advanced security analysis for continuous monitoring.',
-    checks: ['Same checks as Active scan today — more checks are on the roadmap'],
+    summary: 'Everything in Active, plus a Nuclei vulnerability template sweep.',
+    checks: ['Everything in Active scan', 'Nuclei template-based vulnerability scanning'],
     requiresPlan: 'Monitor',
-    comingSoon: true,
+    comingSoon: false,
   },
 ]
 
@@ -94,11 +94,6 @@ export default function ScanTypePicker({ allowedScanTypes, isAdmin, selected, on
                 <ul>
                   {def.checks.map(c => <li key={c}>✓ {c}</li>)}
                 </ul>
-                {def.comingSoon && (
-                  <div className="stc-note">
-                    Deep scan doesn&apos;t have unique checks yet — it currently runs the same scanners as Active.
-                  </div>
-                )}
                 {locked && def.requiresPlan && (
                   <div className="stc-upgrade">
                     <span>Requires {def.requiresPlan} plan</span>

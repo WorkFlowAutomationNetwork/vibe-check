@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   // data has rows only when a new row was inserted; duplicates are ignored and return empty
   if (!error && data && data.length > 0) {
     const { subject, html } = waitlistEmail(email)
-    void sendEmail({ to: email, subject, html })
+    await sendEmail({ to: email, subject, html })
   }
 
   return NextResponse.redirect(new URL('/prelaunch?notify=ok', origin), { status: 303 })

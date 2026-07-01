@@ -7,8 +7,6 @@ import { createServerClient } from '@/lib/supabase/server'
 import type { UrlRow, ScanRow, BadgeRow, ActivityLogRow } from '@/types'
 import '../app.css'
 
-const PLAN_URL_LIMITS: Record<string, number> = { free: 1, starter: 1, monitor: 5 }
-
 const EVENT_DISPLAY: Record<string, { glyph: string; label: string; cls: string }> = {
   scan_completed: { glyph: '↻', label: 'Scan completed', cls: 'rescan' },
   scan_started:   { glyph: '⟳', label: 'Scan started',   cls: '' },
@@ -54,15 +52,17 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
-  const [{ data: urls }, { data: profile }] = await Promise.all([
+  const [{ data: urls }, { data: entitlements }] = await Promise.all([
     supabase.from('urls').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('profiles').select('plan, is_admin').eq('id', user.id).single(),
+    supabase.from('my_entitlements').select('plan, is_admin, max_urls').single(),
   ])
 
   const allUrls: UrlRow[] = urls ?? []
-  const plan = (profile?.plan ?? 'free') as string
-  const isAdmin = profile?.is_admin ?? false
-  const urlLimit = isAdmin ? Infinity : (PLAN_URL_LIMITS[plan] ?? 1)
+  // entitlements.plan is the *effective* plan -- an expired Starter
+  // purchase reads back as 'free' (migration 20260701000030).
+  const plan = (entitlements?.plan ?? 'free') as string
+  const isAdmin = entitlements?.is_admin ?? false
+  const urlLimit = isAdmin ? Infinity : (entitlements?.max_urls ?? 1)
   const urlIds = allUrls.map(u => u.id)
 
   let allScans: ScanRow[] = []

@@ -7,6 +7,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: entitlements } = await supabase
+    .from('my_entitlements')
+    .select('can_integrations')
+    .single()
+  if (!entitlements?.can_integrations) {
+    return NextResponse.json({ error: 'requires_monitor' }, { status: 403 })
+  }
+
   const token = generateWebhookToken()
   const tokenHash = hashToken(token)
 

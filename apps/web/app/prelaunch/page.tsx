@@ -46,9 +46,14 @@ export default function PrelaunchPage({ searchParams }: { searchParams: SearchPa
         <hr style={divider} />
 
         {searchParams.notify === 'ok' ? (
-          <p style={{ color: 'var(--violet-deep)', margin: 0 }}>
-            You&apos;re on the list — we&apos;ll email you at launch.
-          </p>
+          <div>
+            <p style={{ color: 'var(--violet-deep)', margin: 0 }}>
+              You&apos;re on the list — we&apos;ll email you at launch.
+            </p>
+            <p style={{ color: 'var(--ink-mute)', fontSize: '13px', marginTop: '8px', marginBottom: 0 }}>
+              Check your spam/promotions folder if the confirmation email doesn&apos;t show up in a few minutes.
+            </p>
+          </div>
         ) : (
           <form action="/api/prelaunch/notify" method="post">
             <p style={{ color: 'var(--ink-soft)', marginTop: 0, fontSize: '14px' }}>Get notified when we launch</p>

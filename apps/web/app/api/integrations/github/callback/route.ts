@@ -44,6 +44,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid state' }, { status: 400 })
   }
 
+  // Defense in depth: /api/integrations/github/install already gates entry,
+  // but re-check here too since this route can be reached directly with a
+  // replayed/forged state cookie.
+  const { data: entitlements } = await supabase
+    .from('my_entitlements')
+    .select('can_integrations, max_repos, repo_count')
+    .single()
+  if (!entitlements?.can_integrations) {
+    const dest = new URL('/billing?error=requires_monitor', APP || request.url)
+    const res = NextResponse.redirect(dest, { status: 302 })
+    res.cookies.set(STATE_COOKIE_NAME, '', { ...COOKIE_OPTS, maxAge: 0 })
+    return res
+  }
+  let repoSlotsRemaining = entitlements.max_repos === null
+    ? Infinity
+    : Math.max(0, entitlements.max_repos - entitlements.repo_count)
+
   try {
     // Exchange the OAuth code for an app-scoped user token, then enumerate the
     // installations of this app the user can access. This works whether or not
@@ -86,7 +103,13 @@ export async function GET(request: Request) {
         throw new Error(`installation upsert failed: ${instErr?.message ?? 'no row returned'}`)
       }
 
-      const repos = await listInstallationRepos(inst.installation_id)
+      const allRepos = await listInstallationRepos(inst.installation_id)
+      // Monitor caps connected repos at max_repos total across all
+      // installations -- truncate rather than reject, so a user granting
+      // access to "all repositories" still gets their first N connected
+      // instead of the whole install failing.
+      const repos = allRepos.slice(0, repoSlotsRemaining)
+      repoSlotsRemaining -= repos.length
       if (repos.length > 0) {
         await service.from('repos').upsert(
           repos.map((r) => ({

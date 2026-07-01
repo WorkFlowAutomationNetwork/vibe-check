@@ -4,7 +4,7 @@ import '../landing.css'
 
 export const metadata: Metadata = {
   title: 'Pricing — Vibe-Check',
-  description: 'Free passive scan forever. $9 for a full active audit. $19/mo for continuous monitoring. No BS.',
+  description: 'One free passive scan a month. $15 for a full active audit. $35/mo for continuous monitoring. No BS.',
 }
 
 export default function PricingPage() {
@@ -34,7 +34,7 @@ export default function PricingPage() {
               <div className="label-mono">Pricing</div>
               <h2>One-off audit, or always-on. Your call.</h2>
             </div>
-            <p>Free scan is genuinely free, forever. Pay only if you want active probes, a public badge, or continuous monitoring on every deploy.</p>
+            <p>One free passive scan a month, no card required. Pay only if you want active probes, a public badge, or continuous monitoring on every deploy.</p>
           </div>
 
           <div className="pricing">
@@ -45,7 +45,7 @@ export default function PricingPage() {
               <ul>
                 <li>Passive HTTP &amp; DNS analysis</li>
                 <li>Security headers &amp; TLS checks</li>
-                <li>1 URL</li>
+                <li>1 URL, 1 scan per month</li>
                 <li>Plain-text report (web only)</li>
                 <li>No badge, no PDF, no monitoring</li>
               </ul>
@@ -54,28 +54,29 @@ export default function PricingPage() {
 
             <div className="tier highlight">
               <div className="tier-name">One-off <span className="badge-best">most picked</span></div>
-              <div className="tier-price">$9<span className="per">/ scan</span></div>
+              <div className="tier-price">$15<span className="per">/ scan</span></div>
               <p className="tier-sub">Full active audit. The &ldquo;I&apos;m launching Tuesday and want to be sure&rdquo; tier.</p>
               <ul>
-                <li>50+ checks, active mode</li>
+                <li>Active-mode checks: backend exposure, leaked secrets, rate-limiting</li>
                 <li>Shareable HTML report + PDF export</li>
                 <li>&ldquo;Vibe-Checked ✓&rdquo; badge, valid 30 days</li>
-                <li>Re-run anytime, free</li>
-                <li>1 URL, one-off payment</li>
+                <li>1 URL, 1 successful scan included</li>
+                <li>30-day unlock — reverts to Free afterward</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Buy a scan →</Link>
             </div>
 
             <div className="tier">
               <div className="tier-name">Monitoring</div>
-              <div className="tier-price">$19<span className="per">/ month</span></div>
+              <div className="tier-price">$35<span className="per">/ month</span></div>
               <p className="tier-sub">For sites under active development. Catches regressions before users do.</p>
               <ul>
-                <li>Everything in One-off</li>
+                <li>Everything in One-off, unlimited scans</li>
+                <li>Full GitHub + Vercel integration</li>
                 <li>Deploy-triggered re-scans (webhook)</li>
                 <li>Email alerts on new findings</li>
                 <li>Badge renewed on each re-scan</li>
-                <li>Up to 5 URLs</li>
+                <li>Up to 5 URLs, 5 connected repos</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Start monitoring →</Link>
             </div>
@@ -91,11 +92,11 @@ export default function PricingPage() {
           {[
             [
               'Is the free scan actually free?',
-              'Yes, forever. No card, no trial, no catch — you just need a free account (sign-up takes 30 seconds). Free tier is passive-only: we check security headers, TLS/SSL config, and certificate health. We do not run active probes on the free tier.',
+              'Yes — no card, no trial, no catch, just a free account (sign-up takes 30 seconds). Free gives you one passive scan a month on one URL: security headers, TLS/SSL config, and certificate health. No active probes on the free tier.',
             ],
             [
-              'What counts as an "active" probe?',
-              'Active scans send crafted requests to your app — checking for exposed Supabase tables/buckets, leaked secrets in JS bundles, rate-limiting on login endpoints, and 50+ vulnerability patterns via Nuclei templates. Non-destructive: we never write to your database or delete anything. You verify ownership first so we know you consented.',
+              'What counts as an "active" probe, and what\'s "deep"?',
+              'Active scans (One-off and Monitor) send crafted requests to your app — checking for exposed Supabase tables/buckets, leaked secrets in JS bundles, and rate-limiting on login endpoints. Deep scans (Monitor only) add a Nuclei vulnerability-template sweep on top. Non-destructive: we never write to your database or delete anything. You verify ownership first so we know you consented.',
             ],
             [
               'Do I need to install anything?',
@@ -103,7 +104,7 @@ export default function PricingPage() {
             ],
             [
               'How does the badge work?',
-              'After an active scan, we generate a cryptographically signed badge token. Embed the badge snippet in your site. It links to a stripped public report showing what we checked and what passed. The badge expires when your scan does — re-scan to renew.',
+              'After an active scan, we generate a cryptographically signed badge token. Embed the badge snippet in your site. It links to a stripped public report showing what we checked and what passed. It\'s valid for 30 days — on One-off, that also lines up with when your plan reverts to Free; re-scan (or stay on Monitor) to keep it current.',
             ],
             [
               'What happens to my data?',
@@ -112,6 +113,10 @@ export default function PricingPage() {
             [
               'Can I scan a staging environment?',
               'Yes — as long as it&apos;s reachable from the public internet. Private IPs and localhost are not supported. Staging scans count against your URL limit the same as production.',
+            ],
+            [
+              'What happens after my One-off 30 days are up?',
+              'Your account reverts to the Free plan automatically — no charge, no action needed. Your report and findings stay in your account, but the badge stops being valid and you\'re back to Free\'s one-scan-a-month limit. Buy another One-off scan anytime to unlock active scanning again for another 30 days.',
             ],
           ].map(([q, a]) => (
             <div key={q} style={{ borderTop: '1px solid var(--line)', padding: '24px 0' }}>

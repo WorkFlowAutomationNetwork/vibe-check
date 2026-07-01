@@ -6,43 +6,48 @@ import '../app.css'
 
 const PLAN_NAMES: Record<string, string> = {
   free: 'Free',
-  starter: 'Starter — one-off scans',
+  starter: 'One-off — 30-day unlock',
   monitor: 'Monitor — continuous',
 }
 
 const PLAN_PRICES: Record<string, string> = {
   free: '$0 / month',
-  starter: '$9 / scan',
-  monitor: '$19 / month',
+  starter: '$15 / scan',
+  monitor: '$35 / month',
 }
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
-  free: 'Passive scan only. No active probes, no badge, no report sharing.',
-  starter: 'One-off active scans with shareable report and trust badge.',
-  monitor: 'Continuous monitoring, deploy-triggered re-scans, email alerts on new findings, and up to 5 URLs.',
+  free: 'Passive scan only, one per month. No active probes, no badge, no report sharing.',
+  starter: 'One active scan, shareable report, and a 30-day trust badge. Reverts to Free after 30 days.',
+  monitor: 'Continuous monitoring, full GitHub + Vercel integration, deploy-triggered re-scans, email alerts, up to 5 URLs and 5 repos.',
 }
 
 const URL_LIMITS: Record<string, number> = { free: 1, starter: 1, monitor: 5 }
+const SCAN_LIMITS: Record<string, number | null> = { free: 1, starter: 1, monitor: null }
 
 export default async function BillingPage() {
   const supabase = createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-  const [{ data: profile }, { count: scanCount }, { count: urlCount }] = await Promise.all([
+  const [{ data: profile }, { data: entitlements }, { count: urlCount }] = await Promise.all([
     supabase.from('profiles').select('plan, stripe_customer_id, stripe_subscription_status').eq('id', user.id).single(),
-    supabase.from('scans').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', startOfMonth),
+    supabase.from('my_entitlements').select('plan, scans_used_this_period, plan_expires_at').single(),
     supabase.from('urls').select('id', { count: 'exact', head: true }).eq('user_id', user.id).is('deleted_at', null),
   ])
 
-  const plan = (profile?.plan ?? 'free') as string
+  // `plan` here is the *effective* plan from my_entitlements (an expired
+  // Starter purchase reads back as 'free' — migration 20260701000030),
+  // not the raw, possibly-stale profiles.plan column.
+  const plan = (entitlements?.plan ?? profile?.plan ?? 'free') as string
   const hasStripe = !!profile?.stripe_customer_id
   const urlLimit = URL_LIMITS[plan] ?? 1
+  const scanLimit = SCAN_LIMITS[plan] ?? null
   const urlsUsed = urlCount ?? 0
-  const scansUsed = scanCount ?? 0
+  const scansUsed = entitlements?.scans_used_this_period ?? 0
+  const planExpiresAt = plan === 'starter' && entitlements?.plan_expires_at
+    ? new Date(entitlements.plan_expires_at)
+    : null
 
   return (
     <AppShell activeNav="billing">
@@ -67,14 +72,20 @@ export default async function BillingPage() {
                 <div className="val">{PLAN_PRICES[plan]}</div>
               </div>
               <div>
-                <div className="lbl">Scans this month</div>
-                <div className="val lime">{scansUsed}</div>
+                <div className="lbl">{plan === 'free' ? 'Scans this month' : 'Scans this period'}</div>
+                <div className="val lime">{scansUsed}{scanLimit !== null ? ` / ${scanLimit}` : ''}</div>
               </div>
               <div>
                 <div className="lbl">URLs monitored</div>
                 <div className="val">{urlsUsed} / {urlLimit}</div>
               </div>
             </div>
+            {planExpiresAt && (
+              <div style={{ marginTop: 4, marginBottom: 12, fontSize: 13, color: 'var(--warn)' }}>
+                Reverts to Free on {planExpiresAt.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                — badge and active scanning end then.
+              </div>
+            )}
             <div className="pactions">
               {plan === 'free' && (
                 <Link href="/api/billing/checkout?plan=starter" className="btn btn-lime">↑ Upgrade to Starter</Link>
@@ -123,13 +134,13 @@ export default async function BillingPage() {
             <div className="lbl">Scans run</div>
             <div className="val-row">
               <span className="val">{scansUsed}</span>
-              <span className="denom">/ {plan === 'free' ? '1 free' : 'unlimited'}</span>
+              <span className="denom">/ {scanLimit !== null ? scanLimit : 'unlimited'}</span>
             </div>
             <div className="meter">
-              <div className="fill" style={{ width: plan === 'free' ? `${Math.min(100, scansUsed * 100)}%` : `${Math.min(100, (scansUsed / 20) * 100)}%` }} />
+              <div className="fill" style={{ width: scanLimit !== null ? `${Math.min(100, (scansUsed / scanLimit) * 100)}%` : `${Math.min(100, (scansUsed / 20) * 100)}%` }} />
             </div>
             <div className="meter-note">
-              {scansUsed === 0 ? 'no scans yet this month' : `${scansUsed} scan${scansUsed !== 1 ? 's' : ''} completed`}
+              {scansUsed === 0 ? 'no scans yet this period' : `${scansUsed} scan${scansUsed !== 1 ? 's' : ''} completed`}
             </div>
           </div>
           <div className="usage-stat">
@@ -167,12 +178,12 @@ export default async function BillingPage() {
             <div style={{ background: plan === 'starter' ? 'var(--lime-soft, #f7ffe0)' : undefined }}>
               One-off
               {plan === 'starter' && <span className="current-badge">current</span>}
-              <div className="price">$9<small> / scan</small></div>
+              <div className="price">$15<small> / scan</small></div>
             </div>
             <div style={{ background: plan === 'monitor' ? 'var(--lime-soft, #f7ffe0)' : undefined }}>
               <span style={{ color: 'var(--violet)' }}>Monitor</span>
               {plan === 'monitor' && <span className="current-badge">current</span>}
-              <div className="price">$19<small> / month</small></div>
+              <div className="price">$35<small> / month</small></div>
             </div>
           </div>
           <div className="compare-row">
@@ -182,9 +193,15 @@ export default async function BillingPage() {
             <div className="v yes">✓</div>
           </div>
           <div className="compare-row">
-            <div className="feat">Active probes (Nuclei templates, secrets, rate limiting)</div>
+            <div className="feat">Active probes (backend exposure, secrets, rate limiting)</div>
             <div className="v no">—</div>
             <div className="v yes">✓</div>
+            <div className="v yes">✓</div>
+          </div>
+          <div className="compare-row">
+            <div className="feat">Deep scan (+ Nuclei vulnerability templates)</div>
+            <div className="v no">—</div>
+            <div className="v no">—</div>
             <div className="v yes">✓</div>
           </div>
           <div className="compare-row">
@@ -200,6 +217,12 @@ export default async function BillingPage() {
             <div className="v yes">always on</div>
           </div>
           <div className="compare-row">
+            <div className="feat">GitHub + Vercel integration</div>
+            <div className="v no">—</div>
+            <div className="v no">—</div>
+            <div className="v yes">✓ up to 5 repos</div>
+          </div>
+          <div className="compare-row">
             <div className="feat">Deploy-triggered re-scans</div>
             <div className="v no">—</div>
             <div className="v no">—</div>
@@ -212,9 +235,15 @@ export default async function BillingPage() {
             <div className="v yes">✓</div>
           </div>
           <div className="compare-row">
+            <div className="feat">Scans included</div>
+            <div className="v">1 / month</div>
+            <div className="v">1, 30-day unlock</div>
+            <div className="v yes">unlimited</div>
+          </div>
+          <div className="compare-row">
             <div className="feat">URLs included</div>
             <div className="v">1</div>
-            <div className="v">1 per scan</div>
+            <div className="v">1</div>
             <div className="v yes">up to 5</div>
           </div>
           <div className="compare-row foot">
