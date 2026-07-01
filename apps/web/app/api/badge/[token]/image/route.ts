@@ -28,31 +28,29 @@ export async function GET(_req: Request, { params }: { params: { token: string }
     grade = scan?.grade ?? ''
   }
 
-  const label = 'Vibe-Checked'
-  const value = valid ? (grade ? `✓ ${grade}` : '✓') : 'lapsed'
-  const valueColor = valid ? (GRADE_COLOR[grade] ?? '#7c3aed') : '#6b7280'
+  // Design ref: design/Vibe-Check Badge Redesign.html -- rounded pill with an
+  // offset "hard shadow" outline (matches the app's --ink shadow language),
+  // a violet check-circle, and a grade letter colour-coded per GRADE_COLOR.
+  const gradeColor = grade ? (GRADE_COLOR[grade] ?? '#7c3aed') : null
 
-  const labelW = 90
-  const valueW = grade ? 54 : 36
-  const totalW = labelW + valueW
+  const shadowFill = valid ? '#0F0F0E' : '#B9B9B0'
+  const pillFill = valid ? '#FFFFFF' : '#F2F2EC'
+  const pillStroke = valid ? '#0F0F0E' : '#8A8A82'
+  const circleFill = valid ? '#7C3AED' : '#8A8A82'
+  const labelFill = valid ? '#0F0F0E' : '#8A8A82'
+  const labelDecoration = valid ? '' : ' text-decoration="line-through"'
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="20">
-  <linearGradient id="s" x2="0" y2="100%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <clipPath id="r"><rect width="${totalW}" height="20" rx="3" fill="#fff"/></clipPath>
-  <g clip-path="url(#r)">
-    <rect width="${labelW}" height="20" fill="#0f0f0e"/>
-    <rect x="${labelW}" width="${valueW}" height="20" fill="${valueColor}"/>
-    <rect width="${totalW}" height="20" fill="url(#s)"/>
-  </g>
-  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-    <text x="${labelW / 2}" y="15" fill="#000" fill-opacity=".3">${label}</text>
-    <text x="${labelW / 2}" y="14">${label}</text>
-    <text x="${labelW + valueW / 2}" y="15" fill="#000" fill-opacity=".3">${value}</text>
-    <text x="${labelW + valueW / 2}" y="14">${value}</text>
-  </g>
+  const gradeText = valid && grade
+    ? `<text x="140" y="22" text-anchor="middle" font-family="system-ui, Arial, sans-serif" font-size="14" font-weight="800" fill="${gradeColor}">${grade}</text>`
+    : ''
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="168" height="34" viewBox="0 0 168 34">
+  <rect x="7" y="7" width="158" height="27" rx="13.5" fill="${shadowFill}"/>
+  <rect x="4" y="4" width="158" height="27" rx="13.5" fill="${pillFill}" stroke="${pillStroke}" stroke-width="1.5"/>
+  <circle cx="19" cy="17.5" r="11" fill="${circleFill}"/>
+  <text x="19" y="22" text-anchor="middle" font-family="system-ui, Arial, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">✓</text>
+  <text x="38" y="22" font-family="system-ui, Arial, sans-serif" font-size="13" font-weight="700" fill="${labelFill}"${labelDecoration}>Vibe-Checked</text>
+  ${gradeText}
 </svg>`
 
   return new NextResponse(svg, {

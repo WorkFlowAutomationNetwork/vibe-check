@@ -14,6 +14,7 @@ interface BadgeData {
   grade: string | null
   completed_at: string | null
   url: string | null
+  public_report_enabled: boolean
 }
 
 interface Props {
@@ -32,11 +33,15 @@ function formatMonth(iso: string | null): string {
 
 export default function BadgeClient({ badge, appUrl }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
+  const [publicReportEnabled, setPublicReportEnabled] = useState(badge?.public_report_enabled ?? false)
+  const [togglePending, setTogglePending] = useState(false)
 
-  const publicReportHref = badge ? `${appUrl}/report/${badge.scan_id}/public` : ''
+  const publicReportHref = badge
+    ? (publicReportEnabled ? `${appUrl}/report/${badge.scan_id}/public` : appUrl)
+    : ''
   const badgeImgSrc = badge ? `${appUrl}/api/badge/${badge.public_token}/image` : ''
   const imgSnippet = badge
-    ? `<a href="${publicReportHref}" target="_blank" rel="noopener">\n  <img src="${badgeImgSrc}" alt="Vibe-Checked" height="20" />\n</a>`
+    ? `<a href="${publicReportHref}" target="_blank" rel="noopener">\n  <img src="${badgeImgSrc}" alt="Vibe-Checked" height="34" />\n</a>`
     : ''
   const mdSnippet = badge
     ? `[![Vibe-Checked](${badgeImgSrc})](${publicReportHref})`
@@ -47,6 +52,25 @@ export default function BadgeClient({ badge, appUrl }: Props) {
       setCopied(key)
       setTimeout(() => setCopied(null), 2000)
     })
+  }
+
+  async function toggleReportVisibility() {
+    if (!badge || togglePending) return
+    const next = !publicReportEnabled
+    setTogglePending(true)
+    setPublicReportEnabled(next) // optimistic
+    try {
+      const res = await fetch(`/api/urls/${badge.url_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public_report_enabled: next }),
+      })
+      if (!res.ok) setPublicReportEnabled(!next) // revert on failure
+    } catch {
+      setPublicReportEnabled(!next)
+    } finally {
+      setTogglePending(false)
+    }
   }
 
   const displayUrl = badge?.url?.replace(/^https?:\/\//, '') ?? ''
@@ -134,6 +158,47 @@ export default function BadgeClient({ badge, appUrl }: Props) {
               </div>
             </div>
 
+            <h2 className="section-label">Public report visibility</h2>
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--line)',
+              borderRadius: 'var(--radius)',
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 20,
+              flexWrap: 'wrap',
+              marginBottom: 28,
+            }}>
+              <div style={{ maxWidth: '52ch' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                  Let visitors click through to a summary report
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
+                  Off by default — the badge shows your grade but clicking it just goes to vibe-check-app.com.
+                  Turn this on to link through to a public summary instead (grade + how many checks passed by
+                  severity — never specific finding titles, categories, or remediation detail).
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={publicReportEnabled}
+                onClick={toggleReportVisibility}
+                disabled={togglePending}
+                className="btn btn-soft"
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  flexShrink: 0,
+                  ...(publicReportEnabled ? { background: 'var(--violet)', color: 'white', borderColor: 'var(--violet)' } : {}),
+                }}
+              >
+                {publicReportEnabled ? '✓ Public' : 'Private'}
+              </button>
+            </div>
+
             <h2 className="section-label">Embed on your site</h2>
             <div style={{
               background: 'var(--bg-card)',
@@ -159,27 +224,41 @@ export default function BadgeClient({ badge, appUrl }: Props) {
             </div>
 
             <h2 className="section-label">Public report link</h2>
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--line)',
-              borderRadius: 'var(--radius)',
-              padding: '20px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              flexWrap: 'wrap',
-              marginBottom: 28,
-            }}>
-              <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {publicReportHref}
+            {publicReportEnabled ? (
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--line)',
+                borderRadius: 'var(--radius)',
+                padding: '20px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                flexWrap: 'wrap',
+                marginBottom: 28,
+              }}>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {publicReportHref}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => copy(publicReportHref, 'link')} className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
+                    {copied === 'link' ? '✓ Copied!' : 'Copy link'}
+                  </button>
+                  <a href={publicReportHref} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}>Open ↗</a>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => copy(publicReportHref, 'link')} className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
-                  {copied === 'link' ? '✓ Copied!' : 'Copy link'}
-                </button>
-                <a href={publicReportHref} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}>Open ↗</a>
+            ) : (
+              <div style={{
+                background: 'var(--bg-sub)',
+                border: '1.5px dashed var(--line)',
+                borderRadius: 'var(--radius)',
+                padding: '16px 24px',
+                fontSize: 13,
+                color: 'var(--ink-mute)',
+                marginBottom: 28,
+              }}>
+                Turn on public report visibility above to get a shareable link.
               </div>
-            </div>
+            )}
           </>
         )}
 

@@ -8,9 +8,13 @@ const logActivity = vi.fn()
 let urlSelectResult: { data: unknown } = { data: null }
 let scanCountResult: { count: number } = { count: 0 }
 let deleteResult: { error: unknown } = { error: null }
+let updateResult: { data: unknown; error: unknown } = { data: null, error: null }
 const deleteEq = vi.fn()
 const selectEq = vi.fn()
 const selectIs = vi.fn()
+const updateEq = vi.fn()
+const updateIs = vi.fn()
+const updateCall = vi.fn()
 
 function makeClient() {
   return {
@@ -46,6 +50,30 @@ function makeClient() {
               },
             }),
           }),
+          // UPDATE chain: .update().eq().eq().is().select().maybeSingle()
+          update: (...argsU: unknown[]) => {
+            updateCall(...argsU)
+            return {
+              eq: (...args1: unknown[]) => {
+                updateEq(...args1)
+                return {
+                  eq: (...args2: unknown[]) => {
+                    updateEq(...args2)
+                    return {
+                      is: (...args3: unknown[]) => {
+                        updateIs(...args3)
+                        return {
+                          select: () => ({
+                            maybeSingle: async () => updateResult,
+                          }),
+                        }
+                      },
+                    }
+                  },
+                }
+              },
+            }
+          },
         }
       }
       if (table === 'scans') {
@@ -67,12 +95,20 @@ vi.mock('@/lib/activity', () => ({
   logActivity: (...args: unknown[]) => logActivity(...args),
 }))
 
-import { DELETE } from './route'
+import { DELETE, PATCH } from './route'
 
 function call(id = 'url-1') {
   return DELETE(new Request('http://localhost/api/urls/' + id, { method: 'DELETE' }), {
     params: { id },
   })
+}
+
+function patchCall(body: unknown, id = 'url-1') {
+  return PATCH(new Request('http://localhost/api/urls/' + id, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  }), { params: { id } })
 }
 
 beforeEach(() => {
@@ -81,6 +117,7 @@ beforeEach(() => {
   urlSelectResult = { data: { id: 'url-1', url: 'https://example.com' } }
   scanCountResult = { count: 0 }
   deleteResult = { error: null }
+  updateResult = { data: { id: 'url-1', public_report_enabled: true }, error: null }
 })
 
 describe('DELETE /api/urls/[id]', () => {
@@ -124,6 +161,50 @@ describe('DELETE /api/urls/[id]', () => {
       userId: 'user-1',
       eventType: 'url_removed',
       payload: { url: 'https://example.com' },
+    })
+  })
+})
+
+describe('PATCH /api/urls/[id]', () => {
+  it('401 when unauthenticated', async () => {
+    getUser.mockResolvedValue({ data: { user: null } })
+    const res = await patchCall({ public_report_enabled: true })
+    expect(res.status).toBe(401)
+  })
+
+  it('400 when public_report_enabled is missing or not a boolean', async () => {
+    const res = await patchCall({ public_report_enabled: 'yes' })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_body' })
+    expect(updateCall).not.toHaveBeenCalled()
+  })
+
+  it('404 when the URL is not found, not owned, or soft-deleted', async () => {
+    updateResult = { data: null, error: null }
+    const res = await patchCall({ public_report_enabled: true })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'not_found' })
+  })
+
+  it('500 when the update fails', async () => {
+    updateResult = { data: null, error: { message: 'boom' } }
+    const res = await patchCall({ public_report_enabled: true })
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: 'update_failed' })
+  })
+
+  it('200 updates the flag, scoped to owner + non-deleted, and logs it', async () => {
+    const res = await patchCall({ public_report_enabled: true })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ id: 'url-1', public_report_enabled: true })
+    expect(updateCall).toHaveBeenCalledWith({ public_report_enabled: true })
+    expect(updateEq).toHaveBeenCalledWith('id', 'url-1')
+    expect(updateEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(updateIs).toHaveBeenCalledWith('deleted_at', null)
+    expect(logActivity).toHaveBeenCalledWith({
+      userId: 'user-1',
+      eventType: 'url_public_report_toggled',
+      payload: { url_id: 'url-1', public_report_enabled: true },
     })
   })
 })

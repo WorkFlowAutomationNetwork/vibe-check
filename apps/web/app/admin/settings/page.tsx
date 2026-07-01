@@ -1,11 +1,34 @@
 import AdminShell from '@/components/admin/AdminShell'
+import { createServiceClient } from '@/lib/supabase/server'
 import '../admin.css'
 
-export default function AdminSettingsPage() {
+interface PlanLimitRow {
+  plan: string
+  max_urls: number
+  max_scans_per_month: number | null
+  allowed_scan_types: string[]
+  can_monitor: boolean
+  can_badge: boolean
+  can_integrations: boolean
+  max_repos: number
+}
+
+const PLAN_ORDER = ['free', 'starter', 'monitor']
+
+export default async function AdminSettingsPage() {
   const scannerUrl = process.env.SCANNER_API_URL ?? 'http://localhost:8000'
   const scannerKeySet = !!process.env.SCANNER_INTERNAL_KEY
   const redisUrl = process.env.REDIS_URL ?? '(not set)'
   const maxConcurrent = process.env.MAX_CONCURRENT_SCANS ?? '5'
+
+  const service = createServiceClient()
+  const { data: planLimitsData } = await service
+    .from('plan_limits')
+    .select('plan, max_urls, max_scans_per_month, allowed_scan_types, can_monitor, can_badge, can_integrations, max_repos')
+
+  const planLimits: PlanLimitRow[] = ((planLimitsData ?? []) as PlanLimitRow[])
+    .slice()
+    .sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan))
 
   return (
     <AdminShell activeNav="settings">
@@ -75,25 +98,25 @@ export default function AdminSettingsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg-sub)' }}>
-                  {['Plan', 'Max URLs', 'Scans/mo', 'Scan types', 'Badge', 'Monitor', 'Integrations'].map(h => (
+                  {['Plan', 'Max URLs', 'Max repos', 'Scans/mo', 'Scan types', 'Badge', 'Monitor', 'Integrations'].map(h => (
                     <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--ink-mute)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { plan: 'free', urls: '1', scans: '3', types: 'passive', badge: false, monitor: false, integrations: false },
-                  { plan: 'starter', urls: '5', scans: '∞', types: 'passive, active', badge: true, monitor: false, integrations: false },
-                  { plan: 'monitor', urls: '∞', scans: '∞', types: 'all', badge: true, monitor: true, integrations: true },
-                ].map((row, i, arr) => (
+                {planLimits.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: '14px 18px', color: 'var(--ink-mute)' }}>Failed to load plan_limits</td></tr>
+                )}
+                {planLimits.map((row, i, arr) => (
                   <tr key={row.plan} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none' }}>
                     <td style={{ padding: '12px 14px' }}>
                       <span className={`plan-tag ${row.plan}`}>{row.plan}</span>
                     </td>
-                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{row.urls}</td>
-                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{row.scans}</td>
-                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-soft)' }}>{row.types}</td>
-                    {[row.badge, row.monitor, row.integrations].map((v, j) => (
+                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{row.max_urls}</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{row.max_repos}</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{row.max_scans_per_month ?? '∞'}</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-soft)' }}>{row.allowed_scan_types.join(', ')}</td>
+                    {[row.can_badge, row.can_monitor, row.can_integrations].map((v, j) => (
                       <td key={j} style={{ padding: '12px 14px', fontFamily: 'var(--font-mono)', fontSize: 13, color: v ? '#16a34a' : 'var(--ink-mute)' }}>{v ? '✓' : '—'}</td>
                     ))}
                   </tr>
@@ -101,7 +124,7 @@ export default function AdminSettingsPage() {
               </tbody>
             </table>
             <div style={{ padding: '12px 18px', borderTop: '1px solid var(--line)', background: 'var(--bg-sub)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>
-              Limits are enforced via Postgres RLS policies in migration 20260521000014. Admin accounts bypass all limits.
+              Read live from <code>plan_limits</code> (enforced via Postgres RLS, migrations 20260521000014 + 20260701000030). Admin accounts bypass all limits.
             </div>
           </div>
 
@@ -137,27 +160,14 @@ export default function AdminSettingsPage() {
             borderRadius: 'var(--radius)',
             padding: '20px 24px',
           }}>
-            <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: '0 0 12px' }}>
-              Add these IPs to your WAF / Cloudflare allowlist so active scans aren&apos;t rate-limited:
+            <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: 0 }}>
+              No fixed IP list is published (as of 2026-07-01). Scan traffic originates from
+              our Sydney, Australia infrastructure (Fly.io, region <code>syd</code>) — the
+              previous list here was placeholder AWS EU addresses that never matched real
+              scanner traffic. A stable IP requires a paid static egress IP allocation
+              (~$3.60/mo); not yet provisioned. If a customer asks why scans are being
+              rate-limited, direct them to <code>security@vibe-check-app.com</code>.
             </p>
-            <div style={{
-              background: 'var(--bg-sub)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '12px 16px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 13,
-              color: 'var(--ink)',
-              lineHeight: 1.8,
-            }}>
-              52.18.41.20<br />
-              52.18.41.21<br />
-              3.122.18.5<br />
-              3.122.18.6<br />
-              18.193.0.142
-            </div>
-            <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>
-              Published at /trust — direct users who ask why they see scan traffic.
-            </div>
           </div>
         </div>
       </div>

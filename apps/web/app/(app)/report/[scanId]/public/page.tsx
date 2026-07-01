@@ -4,14 +4,6 @@ import { createServerClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Security Report — Vibe-Check' }
 
-const sevColor: Record<string, string> = {
-  critical: 'var(--danger)',
-  medium: 'var(--warn)',
-  low: 'var(--ink-mute)',
-  info: 'var(--ink-mute)',
-  pass: '#16a34a',
-}
-
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -20,11 +12,13 @@ function formatDate(iso: string | null): string {
 export default async function PublicReportPage({ params }: { params: { scanId: string } }) {
   const supabase = createServerClient()
 
+  // public_scans is already scoped to urls with public_report_enabled = true
+  // (supabase/migrations/20260701000031) -- no further filter needed here,
+  // and the anon key has no path to a scan whose owner hasn't opted in.
   const { data: scan } = await supabase
-    .from('scans')
-    .select('id, grade, score, completed_at, scan_type, url_id, is_public, checks_total')
+    .from('public_scans')
+    .select('id, grade, score, completed_at, scan_type, url_id, checks_total')
     .eq('id', params.scanId)
-    .eq('is_public', true)
     .single()
 
   if (!scan) {
@@ -44,22 +38,27 @@ export default async function PublicReportPage({ params }: { params: { scanId: s
     )
   }
 
-  const [{ data: urlRow }, { data: findings }] = await Promise.all([
+  const [{ data: urlRow }, { data: findingCounts }] = await Promise.all([
     supabase.from('public_urls').select('url').eq('id', scan.url_id).single(),
-    supabase.from('public_findings')
-      .select('id, severity, title, category, result')
+    // Severity + count only -- no title/category/result. See migration
+    // 20260701000031 for why: application-layer hiding isn't a
+    // confidentiality boundary against the anon key, so the view itself
+    // never exposes per-finding detail to begin with.
+    supabase.from('public_finding_counts')
+      .select('severity, count')
       .eq('scan_id', params.scanId),
   ])
 
-  const allFindings = findings ?? []
   const displayUrl = (urlRow?.url ?? '').replace(/^https?:\/\//, '')
 
+  const bySeverity = new Map((findingCounts ?? []).map(f => [f.severity, f.count]))
   const counts = {
-    critical: allFindings.filter(f => f.severity === 'critical').length,
-    medium:   allFindings.filter(f => f.severity === 'medium').length,
-    low:      allFindings.filter(f => f.severity === 'low').length,
-    pass:     allFindings.filter(f => f.severity === 'pass').length,
+    critical: bySeverity.get('critical') ?? 0,
+    medium:   bySeverity.get('medium') ?? 0,
+    low:      bySeverity.get('low') ?? 0,
+    pass:     bySeverity.get('pass') ?? 0,
   }
+  const totalFindings = Array.from(bySeverity.values()).reduce((sum, n) => sum + n, 0)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-display)' }}>
@@ -93,7 +92,7 @@ export default async function PublicReportPage({ params }: { params: { scanId: s
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Security report</div>
             <div style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.6, marginBottom: 14 }}>
-              {allFindings.length} findings across {Object.keys(counts).filter(k => counts[k as keyof typeof counts] > 0).length} categories.
+              {totalFindings} checks performed.
             </div>
             <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
               {counts.critical > 0 && <span style={{ color: 'var(--danger)' }}><b>{counts.critical}</b> critical</span>}
@@ -104,24 +103,10 @@ export default async function PublicReportPage({ params }: { params: { scanId: s
           </div>
         </div>
 
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Findings ({allFindings.length})</div>
-        <div style={{ display: 'grid', gap: 1, marginBottom: 40 }}>
-          {allFindings.map((f) => (
-            <div key={f.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--line)', borderLeft: `3px solid ${sevColor[f.severity] ?? 'var(--ink-mute)'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 60, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, color: sevColor[f.severity], textTransform: 'uppercase', flexShrink: 0 }}>{f.severity}</div>
-              <div style={{ flex: 1, fontSize: 14, fontWeight: f.severity === 'pass' ? 400 : 500 }}>{f.title}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', flexShrink: 0 }}>{f.category}</div>
-              <div style={{ fontSize: 16, flexShrink: 0 }}>{f.severity === 'pass' ? '✓' : '×'}</div>
-            </div>
-          ))}
-          {allFindings.length === 0 && (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>No findings to display.</div>
-          )}
-        </div>
-
         <div style={{ background: 'var(--violet-soft)', border: '1.5px solid var(--violet)', borderRadius: 'var(--radius)', padding: '20px 24px', marginBottom: 40, fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-          <span style={{ fontWeight: 700, color: 'var(--violet)' }}>This is a public summary.</span>{' '}
-          Remediation steps, reproduction details, and raw scanner output are only visible to the account owner.
+          <span style={{ fontWeight: 700, color: 'var(--violet)' }}>This is a high-level summary.</span>{' '}
+          Only the grade and check totals by severity are shared here — specific finding titles, categories,
+          reproduction details, and remediation steps are only visible to the account owner.
         </div>
 
         <div style={{ textAlign: 'center', padding: '40px 0', borderTop: '1px solid var(--line)' }}>

@@ -39,14 +39,17 @@ export default function PrivacyPage() {
         <li><strong>Supabase</strong> — database, authentication, and file storage. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
         <li><strong>Stripe</strong> — payment processing. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
         <li><strong>Resend</strong> — transactional email delivery. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
-        <li><strong>[Scanner host — Railway / Fly.io / Hetzner]</strong> — runs the scanning service. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
+        <li><strong>Fly.io</strong> — runs the scanning service. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
+        <li><strong>Vercel</strong> — hosts the web application and processes all visitor/user HTTP traffic. <span style={{ fontFamily: 'var(--font-mono)' }}>[link DPA]</span></li>
       </ul>
       <p>We do not sell your personal data.</p>
 
       <h3>4. International transfers</h3>
       <p>
-        Our infrastructure may process data in <strong>[REGION(S)]</strong>. Where personal
-        data of EU/UK users is transferred outside the EEA/UK, we rely on appropriate
+        Our scanning infrastructure runs in <strong>Australia (Sydney, on Fly.io)</strong>.
+        Our web application is hosted on Vercel and our database on Supabase, whose exact
+        processing region(s) are <strong>[CONFIRM SUPABASE + VERCEL REGION]</strong>. Where
+        personal data of EU/UK users is transferred outside the EEA/UK, we rely on appropriate
         safeguards such as the Standard Contractual Clauses.{' '}
         <strong>[Confirm transfer mechanism with counsel.]</strong>
       </p>

@@ -8,16 +8,12 @@ export const metadata: Metadata = {
     'How Vibe-Check scans, the IP ranges our scanner uses, and how we only ever scan ownership-verified targets.',
 }
 
-// Egress IPs of the scanner service. Keep in sync with the list shown in
-// /admin/settings (Scanner IP allowlist). Single source of truth for the
-// addresses customers add to their WAF / Cloudflare allowlist.
-const SCANNER_IPS = [
-  '52.18.41.20',
-  '52.18.41.21',
-  '3.122.18.5',
-  '3.122.18.6',
-  '18.193.0.142',
-]
+// No fixed IP list published here (2026-07-01) -- the previous list was
+// placeholder AWS EU addresses that never matched the real scanner (Fly.io,
+// Sydney/syd), and Fly's default egress IP isn't guaranteed stable without a
+// paid static app-scoped egress IP allocation ($3.60/mo). Re-add a concrete
+// list once that's provisioned -- publishing an IP that can silently drift
+// would be worse than not publishing one.
 
 export default function TrustPage() {
   return (
@@ -50,7 +46,7 @@ export default function TrustPage() {
             our traffic and allowlist it.
           </p>
 
-          {/* Scanner IPs */}
+          {/* Scanner origin */}
           <div
             style={{
               background: 'var(--bg-card)',
@@ -61,26 +57,16 @@ export default function TrustPage() {
               marginBottom: 40,
             }}
           >
-            <div className="label-mono" style={{ marginBottom: 8 }}>Scanner egress IPs</div>
-            <p style={{ fontSize: 15, color: 'var(--ink-soft)', lineHeight: 1.65, marginBottom: 16 }}>
-              All scan traffic originates from these addresses. Add them to your WAF /
-              Cloudflare allowlist so active scans aren&apos;t throttled or blocked. Any
-              &ldquo;security&rdquo; traffic claiming to be Vibe-Check from another address
-              is not us.
+            <div className="label-mono" style={{ marginBottom: 8 }}>Where scan traffic comes from</div>
+            <p style={{ fontSize: 15, color: 'var(--ink-soft)', lineHeight: 1.65 }}>
+              All scan traffic originates from our scanning infrastructure in{' '}
+              <strong>Sydney, Australia</strong> (Fly.io). We don&apos;t currently publish a
+              fixed IP allowlist here — if your WAF or Cloudflare setup needs one, contact{' '}
+              <a href="mailto:security@vibe-check-app.com" style={{ color: 'var(--violet)' }}>
+                security@vibe-check-app.com
+              </a>{' '}
+              and we&apos;ll help you get scans through safely.
             </p>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 14,
-                lineHeight: 2,
-                background: 'var(--bg-sub)',
-                border: '1px solid var(--line)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '14px 18px',
-              }}
-            >
-              {SCANNER_IPS.map(ip => <div key={ip}>{ip}</div>)}
-            </div>
           </div>
 
           {/* Safeguards */}
@@ -91,7 +77,7 @@ export default function TrustPage() {
             {[
               ['Ownership verification before any scan', 'Every URL must pass a DNS TXT or file-based ownership check before a single request is sent. Scans against unverified targets are refused at the job level, not just the UI.'],
               ['Non-destructive, scoped activity', 'Scans never modify or delete data on your systems. Active probes are scoped and rate-limited — some send crafted requests (e.g. login-endpoint rate-limit tests) but we never write to your database or alter application state. We store likelihood assessments and aggregate counts, never the contents of your data.'],
-              ['Declared infrastructure only', 'We scan exclusively from the IPs above. This is our commitment that scan activity is authorised, scoped, and attributable.'],
+              ['Declared infrastructure only', 'We scan exclusively from our own Sydney, Australia infrastructure — never from a customer’s machine, a third party, or ad-hoc infrastructure. This is our commitment that scan activity is authorised, scoped, and attributable.'],
               ['You are responsible for authorisation', 'You confirm you own, or are authorised to test, every target you submit. Scanning systems you do not control may be illegal — see our Terms.'],
             ].map(([title, body]) => (
               <li key={title} style={{ borderLeft: '3px solid var(--violet)', paddingLeft: 18 }}>

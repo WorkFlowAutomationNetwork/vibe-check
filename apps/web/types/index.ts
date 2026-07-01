@@ -34,6 +34,7 @@ export interface UrlRow {
   verified_at: string | null
   monitoring_mode: 'one_off' | 'continuous'
   label: string | null
+  public_report_enabled: boolean
   deleted_at: string | null
   created_at: string
 }

@@ -9,8 +9,6 @@ import '../app.css'
 type ScanDepth = 'passive' | 'active' | 'deep'
 type RateLimit = 'polite' | 'fast'
 
-const WAF_IPS = '52.18.41.20\n52.18.41.21\n3.122.18.5\n3.122.18.6\n18.193.0.142'
-
 export default function SettingsPage() {
   const supabase = createClient()
 
@@ -34,8 +32,6 @@ export default function SettingsPage() {
   const [scanDepth, setScanDepth] = useState<ScanDepth>('active')
   const [rateLimit, setRateLimit] = useState<RateLimit>('polite')
   const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-
-  const [ipsCopied, setIpsCopied] = useState(false)
 
   const loadProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -103,12 +99,6 @@ export default function SettingsPage() {
 
   function toggleNotif(key: keyof typeof notifs) {
     setNotifs(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  function copyIPs() {
-    navigator.clipboard.writeText(WAF_IPS)
-    setIpsCopied(true)
-    setTimeout(() => setIpsCopied(false), 2000)
   }
 
   const saveLabel = (s: 'idle' | 'saving' | 'saved' | 'error', idle = 'Save changes') =>
@@ -246,11 +236,13 @@ export default function SettingsPage() {
 
             <div className="field">
               <label>WAF IP allowlist</label>
-              <div className="int-webhook" style={{ marginTop: 0 }}>
-                <span className="val">52.18.41.20  ·  52.18.41.21  ·  3.122.18.5  ·  3.122.18.6  ·  18.193.0.142</span>
-                <button onClick={copyIPs}>{ipsCopied ? '✓ copied' : 'copy'}</button>
+              <div className="helper">
+                We don&apos;t currently publish a fixed IP allowlist (scan traffic
+                originates from our Sydney, Australia infrastructure). If scans are
+                getting rate-limited by your WAF, email{' '}
+                <a href="mailto:security@vibe-check-app.com">security@vibe-check-app.com</a>{' '}
+                and we&apos;ll help you get them through.
               </div>
-              <div className="helper">Add these to your WAF allowlist if scans get rate-limited.</div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>

@@ -74,7 +74,7 @@ export default async function AdminDashboardPage() {
   const fmt = (iso: string) =>
     new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 
-  const mrr = stats.starter_users * 9 + stats.monitor_users * 19
+  const mrr = stats.starter_users * 15 + stats.monitor_users * 35
 
   return (
     <AdminShell activeNav="overview">
@@ -136,10 +136,10 @@ export default async function AdminDashboardPage() {
               <span style={{ color: 'var(--ink-mute)' }}>Free</span>{' '}
               <span style={{ color: 'var(--violet)', fontWeight: 700 }}>{stats.free_users}</span>
               {'  ·  '}
-              <span style={{ color: 'var(--ink-mute)' }}>/$15</span>{' '}
+              <span style={{ color: 'var(--ink-mute)' }}>Starter $15</span>{' '}
               <span style={{ color: 'var(--violet)', fontWeight: 700 }}>{stats.starter_users}</span>
               {'  ·  '}
-              <span style={{ color: 'var(--ink-mute)' }}>/mo</span>{' '}
+              <span style={{ color: 'var(--ink-mute)' }}>Monitor $35/mo</span>{' '}
               <span style={{ color: 'var(--lime-deep)', fontWeight: 700 }}>{stats.monitor_users}</span>
             </div>
             <div className="admin-stat-sub"> </div>

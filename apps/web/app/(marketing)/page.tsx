@@ -273,7 +273,7 @@ export default async function LandingPage() {
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)', marginTop: 6 }}>
                 drop-in snippet:
               </div>
-              <pre className="snippet-pre">{`<a href="https://vibe-check-app.com/report/…/public">\n  <img src="https://vibe-check-app.com/api/badge/…/image"\n       alt="Vibe-Checked" height="20" />\n</a>`}</pre>
+              <pre className="snippet-pre">{`<a href="https://vibe-check-app.com/report/…/public">\n  <img src="https://vibe-check-app.com/api/badge/…/image"\n       alt="Vibe-Checked" height="34" />\n</a>`}</pre>
             </div>
 
             <div className="mock-site">

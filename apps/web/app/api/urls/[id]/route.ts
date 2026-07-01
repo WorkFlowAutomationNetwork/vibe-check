@@ -2,6 +2,47 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } },
+) {
+  const supabase = createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await request.json().catch(() => null)
+  if (typeof body?.public_report_enabled !== 'boolean') {
+    return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
+  }
+
+  const { data: urlRow, error: updateError } = await supabase
+    .from('urls')
+    .update({ public_report_enabled: body.public_report_enabled })
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .select('id, public_report_enabled')
+    .maybeSingle()
+
+  if (updateError) {
+    return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+  if (!urlRow) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
+
+  await logActivity({
+    userId: user.id,
+    eventType: 'url_public_report_toggled',
+    payload: { url_id: urlRow.id, public_report_enabled: urlRow.public_report_enabled },
+  })
+
+  return NextResponse.json(urlRow, { status: 200 })
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } },

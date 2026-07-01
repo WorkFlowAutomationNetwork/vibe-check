@@ -38,7 +38,7 @@ export default async function BadgePage() {
 
   const [{ data: scan }, { data: urlRow }] = await Promise.all([
     supabase.from('scans').select('grade, completed_at').eq('id', badge.scan_id).single(),
-    supabase.from('urls').select('url').eq('id', badge.url_id).single(),
+    supabase.from('urls').select('url, public_report_enabled').eq('id', badge.url_id).single(),
   ])
 
   const badgeWithRelations = {
@@ -46,6 +46,7 @@ export default async function BadgePage() {
     grade: scan?.grade ?? null,
     completed_at: scan?.completed_at ?? null,
     url: urlRow?.url ?? null,
+    public_report_enabled: urlRow?.public_report_enabled ?? false,
   }
 
   return <BadgeClient badge={badgeWithRelations} appUrl={APP_URL} />
