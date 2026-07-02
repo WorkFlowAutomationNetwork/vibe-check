@@ -7,7 +7,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL('/sign-in', process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:3000'))
+    return NextResponse.redirect(new URL('/sign-in', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'))
   }
 
   const service = createServiceClient()
@@ -20,7 +20,7 @@ export async function GET() {
   if (!profile?.stripe_customer_id) {
     // No Stripe customer yet — redirect to billing page with message
     return NextResponse.redirect(
-      new URL('/billing?error=no_subscription', process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://localhost:3000')
+      new URL('/billing?error=no_subscription', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000')
     )
   }
 
