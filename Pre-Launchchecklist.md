@@ -30,7 +30,7 @@
 - Home page features reflect real site features - noting things it says no account required ect does that flow actually work? 
 - sense check all security rules and features - ideally some sort of tracking for for ongoing and continous security scans 
 - Apply migration `20260702000033_rate_limits.sql` to prod (rate limiter — built 2026-07-02, fails open until applied so limits stay inert until then). See `Security-feedback.md` §1c.
-- Enable Supabase captcha (hCaptcha/Turnstile) for sign-up: dashboard → Auth → Bot & Abuse Protection, then pass the token in `sign-up/page.tsx`'s `signUp()` options. Sign-up abuse otherwise relies only on Supabase's built-in per-IP limits.
+- Enable sign-up captcha (Cloudflare Turnstile — same account as our DNS/email routing). The frontend is already wired: `sign-up/page.tsx` renders the widget and passes `captchaToken` to `signUp()` **only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set** (unset = no captcha, unchanged behaviour). To turn it on: (1) create a Turnstile widget in the Cloudflare dashboard for `vibe-check-app.com` (+ localhost/Vercel preview hosts for testing); (2) set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (site key) in Vercel; (3) paste the **secret key** into Supabase → Auth → Attack Protection and enable CAPTCHA (provider: Turnstile). Both sides must be on together — enabling the Supabase toggle without the site key (or vice-versa) will reject sign-ups.
 - share info on socials like reddit, linkedin, use hyperframes to make a video or sense check the saved reddit video i have
 - ensure all t's and c's, privacy policy, exemption from ownership of secutity, data retention ect is completed - have Amy sense check, plus the trust page to clearly ouline how everything works 
 - Complete minimum 10 tests of each kind
