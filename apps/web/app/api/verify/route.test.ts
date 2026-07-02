@@ -6,6 +6,7 @@ const update = vi.fn()
 const logActivity = vi.fn()
 const assertSafeHostname = vi.fn()
 const safeFetch = vi.fn()
+const checkRateLimit = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerClient: () => ({
@@ -22,6 +23,7 @@ vi.mock('@/lib/security/ssrf', () => ({
   assertSafeHostname: (...a: unknown[]) => assertSafeHostname(...a),
   safeFetch: (...a: unknown[]) => safeFetch(...a),
 }))
+vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }))
 
 import { POST } from './route'
 import { SsrfError } from '@/lib/security/ssrf'
@@ -41,6 +43,7 @@ beforeEach(() => {
     id: 'url-1', url: 'https://example.com', verification_token: 'vc-verify=tok', verified: false,
   } })
   assertSafeHostname.mockReturnValue(undefined)
+  checkRateLimit.mockResolvedValue({ ok: true, remaining: 10, retryAfterSeconds: 0 })
 })
 
 describe('POST /api/verify SSRF guard', () => {
@@ -49,6 +52,15 @@ describe('POST /api/verify SSRF guard', () => {
     const res = await call()
     expect(res.status).toBe(422)
     expect(await res.json()).toEqual({ error: 'unsupported_host' })
+    expect(safeFetch).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 with Retry-After when the user is over the verify rate limit', async () => {
+    checkRateLimit.mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 42 })
+    const res = await call()
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBe('42')
+    expect(await res.json()).toEqual({ error: 'rate_limited' })
     expect(safeFetch).not.toHaveBeenCalled()
   })
 

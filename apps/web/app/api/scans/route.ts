@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const EnqueueSchema = z.object({
   url_id: z.string().uuid(),
   scan_type: z.enum(['passive', 'active', 'deep']),
 })
+
+// Defense-in-depth over the entitlement caps (can_run_scan): bound burst /
+// probing per user regardless of plan. Monitor is "unlimited" scans but not
+// unlimited-per-hour.
+const SCANS_MAX = 20
+const SCANS_WINDOW_SECONDS = 60 * 60
 
 async function dispatchToScanner(payload: {
   scan_id: string
@@ -34,6 +41,18 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const limit = await checkRateLimit({
+    key: `scans:user:${user.id}`,
+    max: SCANS_MAX,
+    windowSeconds: SCANS_WINDOW_SECONDS,
+  })
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    )
   }
 
   const body = await request.json()

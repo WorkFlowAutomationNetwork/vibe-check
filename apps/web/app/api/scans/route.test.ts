@@ -29,6 +29,9 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
+const checkRateLimit = vi.fn()
+vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }))
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -52,6 +55,7 @@ beforeEach(() => {
   activeScanMaybeSingle.mockResolvedValue({ data: null })
   insertSingle.mockResolvedValue({ data: { id: 'scan-1' }, error: null })
   fetchMock.mockResolvedValue({ ok: true })
+  checkRateLimit.mockResolvedValue({ ok: true, remaining: 20, retryAfterSeconds: 0 })
 })
 
 describe('POST /api/scans', () => {
@@ -83,5 +87,14 @@ describe('POST /api/scans', () => {
     expect(res.status).toBe(202)
     expect(await res.json()).toEqual({ scan_id: 'scan-1' })
     expect(fetchMock).toHaveBeenCalled()
+  })
+
+  it('returns 429 with Retry-After when the per-user scan rate limit is exceeded, without inserting', async () => {
+    checkRateLimit.mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 120 })
+    const res = await call(VALID_BODY)
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBe('120')
+    expect(await res.json()).toEqual({ error: 'rate_limited' })
+    expect(insertSingle).not.toHaveBeenCalled()
   })
 })

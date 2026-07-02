@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockSendEmail } = vi.hoisted(() => ({
+const { mockSendEmail, mockCheckRateLimit } = vi.hoisted(() => ({
   mockSendEmail: vi.fn(),
+  mockCheckRateLimit: vi.fn(),
 }))
 
 vi.mock('@/lib/email/client', () => ({ sendEmail: mockSendEmail }))
 vi.mock('@/lib/email/templates/waitlist', () => ({
   waitlistEmail: vi.fn(() => ({ subject: 'Waitlist', html: '<p>waitlist</p>' })),
+}))
+vi.mock('@/lib/rate-limit', () => ({
+  checkRateLimit: mockCheckRateLimit,
+  clientIp: () => '1.2.3.4',
 }))
 
 const state: any = {}
@@ -41,6 +46,8 @@ describe('POST /api/prelaunch/notify', () => {
   beforeEach(() => {
     state.client = null
     mockSendEmail.mockReset()
+    mockCheckRateLimit.mockReset()
+    mockCheckRateLimit.mockResolvedValue({ ok: true, remaining: 5, retryAfterSeconds: 0 })
   })
 
   it('stores a valid email (lowercased/trimmed) and redirects to notify=ok', async () => {
@@ -75,6 +82,18 @@ describe('POST /api/prelaunch/notify', () => {
     const { POST } = await import('./route')
     const res = await POST(post('not-an-email'))
     expect(res.headers.get('location')).toContain('/prelaunch?notify=invalid')
+    expect(mockSendEmail).not.toHaveBeenCalled()
+  })
+
+  it('redirects to notify=rate_limited and does not write or email when the IP is over the limit', async () => {
+    mockCheckRateLimit.mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 3600 })
+    let upserted: any = null
+    state.client = makeClient({ error: null, count: 0 }, row => { upserted = row })
+    const { POST } = await import('./route')
+    const res = await POST(post('spam@example.com'))
+    expect(res.status).toBe(303)
+    expect(res.headers.get('location')).toContain('/prelaunch?notify=rate_limited')
+    expect(upserted).toBeNull()
     expect(mockSendEmail).not.toHaveBeenCalled()
   })
 

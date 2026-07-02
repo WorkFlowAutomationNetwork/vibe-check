@@ -4,11 +4,17 @@ import { promises as dns } from 'dns'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 import { assertSafeHostname, safeFetch, SsrfError } from '@/lib/security/ssrf'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const VerifySchema = z.object({
   url_id: z.string().uuid(),
   method: z.enum(['dns', 'file', 'meta']),
 })
+
+// Each verify triggers a server-side outbound fetch to the user's domain —
+// throttle per user to cap that amplification.
+const VERIFY_MAX = 10
+const VERIFY_WINDOW_SECONDS = 60
 
 async function checkDns(domain: string, token: string): Promise<boolean> {
   try {
@@ -51,6 +57,18 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const limit = await checkRateLimit({
+    key: `verify:user:${user.id}`,
+    max: VERIFY_MAX,
+    windowSeconds: VERIFY_WINDOW_SECONDS,
+  })
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    )
   }
 
   const body = await request.json()

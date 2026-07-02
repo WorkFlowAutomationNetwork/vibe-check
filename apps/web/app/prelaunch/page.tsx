@@ -61,6 +61,11 @@ export default function PrelaunchPage({ searchParams }: { searchParams: SearchPa
             {searchParams.notify === 'invalid' && (
               <p style={{ color: 'var(--danger)', fontSize: '13px', marginTop: 0 }}>Enter a valid email</p>
             )}
+            {searchParams.notify === 'rate_limited' && (
+              <p style={{ color: 'var(--danger)', fontSize: '13px', marginTop: 0 }}>
+                Too many attempts — please try again later.
+              </p>
+            )}
             <button style={{ ...button, background: 'var(--ink)' }} type="submit">Notify me</button>
           </form>
         )}
