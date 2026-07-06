@@ -58,3 +58,13 @@ Security-feedback.md
 # See CLAUDE.md "Local-only development docs" for what to do if these are missing.
 docs/
 PROJECT_STATUS.md
+
+# docs and .superpowers/sdd are now SYMLINKS to OneDrive masters. The trailing-
+# slash rules only match real directories, so also ignore them as plain paths —
+# otherwise the symlinks show up as untracked and could be committed.
+/docs
+/.superpowers/
+
+# Local safety-net backups of gitignored files (created when env/docs were
+# symlinked to the OneDrive masters). Never committed — restore point only.
+.local-backups/
