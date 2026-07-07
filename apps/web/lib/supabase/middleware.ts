@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { CookieOptions } from '@supabase/ssr'
 import { prelaunchGate } from '@/lib/prelaunch/gate'
+import { mfaRequired } from '@/lib/mfa/config'
 
 export async function updateSession(request: NextRequest) {
   const gated = await prelaunchGate(request)
@@ -57,6 +58,43 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  // --- Mandatory MFA gate (inert unless MFA_REQUIRED) ---
+  // The /mfa and /mfa/enroll pages and /api/auth/mfa/* routes are reachable at
+  // AAL1 (not in `isProtected`), so the gate can't loop. We compute MFA state
+  // once and branch: force enrollment, force the challenge, or (on the gate
+  // pages themselves) bounce an already-satisfied user back to the app.
+  const onMfaPages = path === '/mfa' || path === '/mfa/enroll'
+  if (mfaRequired && user && (isProtected || onMfaPages)) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('mfa_enrolled_at')
+      .eq('id', user.id)
+      .single()
+    const enrolled = Boolean(profile?.mfa_enrolled_at)
+    const isAal2 = aal?.currentLevel === 'aal2'
+
+    if (onMfaPages) {
+      if (enrolled && isAal2) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
+    } else if (!enrolled) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mfa/enroll'
+      url.search = ''
+      return NextResponse.redirect(url)
+    } else if (!isAal2) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mfa'
+      url.search = ''
+      url.searchParams.set('next', path)
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
