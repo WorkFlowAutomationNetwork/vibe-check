@@ -4,8 +4,12 @@ import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
 
 // Surface next/script's props by rendering a real <script> we can inspect.
+// `async` mirrors how next/script actually injects the tag and keeps the
+// @next/next/no-sync-scripts lint rule (which runs during `next build`) happy.
 vi.mock('next/script', () => ({
-  default: (props: { src?: string }) => <script data-testid="turnstile-script" src={props.src} />,
+  default: (props: { src?: string }) => (
+    <script data-testid="turnstile-script" src={props.src} async />
+  ),
 }))
 
 import { TurnstileWidget } from './TurnstileWidget'
