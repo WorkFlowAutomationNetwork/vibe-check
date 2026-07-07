@@ -17,7 +17,13 @@ export function TurnstileWidget({
   return (
     <>
       <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        // `render=explicit` disables Cloudflare's implicit auto-render of any
+        // `.cf-turnstile` element. Without it, api.js auto-renders our container
+        // and races the explicit turnstile.render() in useTurnstile — on
+        // reset-password the implicit render won, so the token callback never
+        // fired and the submit button stayed disabled ("Turnstile skipped
+        // implicit render because a widget already exists in this container").
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
         onLoad={onScriptReady}
       />
