@@ -41,7 +41,7 @@ export async function POST(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
   const { error: sendError } = await service.auth.resetPasswordForEmail(
     authUser.user.email,
-    { redirectTo: `${appUrl}/api/auth/callback?next=/settings` },
+    { redirectTo: `${appUrl}/api/auth/callback?next=/update-password` },
   )
 
   const status = sendError ? 'error' : 'sent'
