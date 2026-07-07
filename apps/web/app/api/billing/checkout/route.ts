@@ -49,6 +49,10 @@ export async function GET(request: Request) {
     // the webhook silently no-ops. subscription mode always creates one, so
     // this only applies (and is only valid) when there's no existing customer.
     ...(plan === 'starter' && !profile?.stripe_customer_id ? { customer_creation: 'always' as const } : {}),
+    // Promotion codes (e.g. the tester first-month code) are only offered on the
+    // Monitor subscription, never on the one-off Starter — this is what scopes a
+    // "first month" discount to the recurring plan without a coupon product restriction.
+    ...(plan === 'monitor' ? { allow_promotion_codes: true } : {}),
     success_url: `${appUrl}/billing?success=1`,
     cancel_url: `${appUrl}/billing?canceled=1`,
   })
