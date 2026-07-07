@@ -1,33 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import Script from 'next/script'
 import { createClient } from '@/lib/supabase/client'
+import { useTurnstile } from '@/lib/turnstile/useTurnstile'
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget'
 
 type PageState = 'form' | 'confirm-pending'
-
-// Cloudflare Turnstile JS API (loaded via the script tag below). Only the
-// members we use are typed.
-type TurnstileApi = {
-  render: (
-    el: HTMLElement,
-    opts: {
-      sitekey: string
-      callback: (token: string) => void
-      'error-callback'?: () => void
-      'expired-callback'?: () => void
-    },
-  ) => string
-  reset: (id?: string) => void
-  remove: (id?: string) => void
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi
-  }
-}
 
 export default function SignUpPage() {
   const [pageState, setPageState] = useState<PageState>('form')
@@ -36,48 +15,12 @@ export default function SignUpPage() {
   const [accepted, setAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const [scriptReady, setScriptReady] = useState(false)
-  const widgetRef = useRef<HTMLDivElement | null>(null)
-  const widgetIdRef = useRef<string | null>(null)
   const supabase = createClient()
+  const captcha = useTurnstile()
 
   // Version identifier for the Terms/Privacy the user is accepting. Bump when
   // the documents materially change so acceptance records remain meaningful.
   const TERMS_VERSION = '[TERMS-VERSION-DATE]'
-
-  // Turnstile is opt-in: with no site key configured (e.g. local dev before the
-  // key is set), the captcha is skipped entirely and sign-up behaves as before.
-  // Enable by setting NEXT_PUBLIC_TURNSTILE_SITE_KEY and the matching secret in
-  // Supabase → Auth → Attack Protection.
-  const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-  const captchaEnabled = Boolean(captchaSiteKey)
-
-  // Explicit-render the widget once its script is ready and we're on the form.
-  // Explicit render (vs. implicit data-attributes) lets us capture the token
-  // into state and reset it after a failed submit — Turnstile tokens are
-  // single-use, so a retry needs a fresh one.
-  useEffect(() => {
-    if (!captchaEnabled || !scriptReady || pageState !== 'form') return
-    if (!widgetRef.current || widgetIdRef.current) return
-    const turnstile = window.turnstile
-    if (!turnstile) return
-
-    widgetIdRef.current = turnstile.render(widgetRef.current, {
-      sitekey: captchaSiteKey!,
-      callback: token => setCaptchaToken(token),
-      'error-callback': () => setCaptchaToken(null),
-      'expired-callback': () => setCaptchaToken(null),
-    })
-
-    return () => {
-      if (widgetIdRef.current) {
-        window.turnstile?.remove(widgetIdRef.current)
-        widgetIdRef.current = null
-      }
-      setCaptchaToken(null)
-    }
-  }, [captchaEnabled, captchaSiteKey, scriptReady, pageState])
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -85,7 +28,7 @@ export default function SignUpPage() {
       setError('Please accept the Terms of Service and Privacy Policy to continue.')
       return
     }
-    if (captchaEnabled && !captchaToken) {
+    if (captcha.enabled && !captcha.token) {
       setError('Please complete the verification challenge to continue.')
       return
     }
@@ -99,7 +42,7 @@ export default function SignUpPage() {
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
         // Only sent when the captcha is enabled; Supabase verifies it against
         // the Turnstile secret configured in Auth → Attack Protection.
-        ...(captchaToken ? { captchaToken } : {}),
+        ...(captcha.token ? { captchaToken: captcha.token } : {}),
         // Record acceptance immediately in the auth user's metadata. Migration
         // 20260617000019 copies this into profiles.terms_accepted_at on profile
         // creation so it's queryable.
@@ -114,10 +57,7 @@ export default function SignUpPage() {
       setError(error.message)
       setLoading(false)
       // Token is spent whether accepted or not — reset so a retry gets a fresh one.
-      if (captchaEnabled && widgetIdRef.current) {
-        window.turnstile?.reset(widgetIdRef.current)
-        setCaptchaToken(null)
-      }
+      captcha.reset()
       return
     }
 
@@ -143,10 +83,7 @@ export default function SignUpPage() {
           Check your spam folder or{' '}
           <button
             type="button"
-            onClick={() => {
-              setCaptchaToken(null)
-              setPageState('form')
-            }}
+            onClick={() => setPageState('form')}
           >
             try again
           </button>
@@ -228,26 +165,14 @@ export default function SignUpPage() {
           </span>
         </label>
 
-        {captchaEnabled && (
-          <>
-            <Script
-              src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-              strategy="afterInteractive"
-              onLoad={() => setScriptReady(true)}
-            />
-            <div
-              ref={widgetRef}
-              className="cf-turnstile"
-              style={{ margin: '0 0 16px' }}
-              aria-label="Verification challenge"
-            />
-          </>
+        {captcha.enabled && (
+          <TurnstileWidget widgetRef={captcha.widgetRef} onScriptReady={captcha.onScriptReady} />
         )}
 
         <button
           type="submit"
           className="auth-submit"
-          disabled={loading || !accepted || (captchaEnabled && !captchaToken)}
+          disabled={loading || !accepted || (captcha.enabled && !captcha.token)}
         >
           {loading ? 'Creating account…' : 'Create account →'}
         </button>

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useTurnstile } from '@/lib/turnstile/useTurnstile'
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -12,17 +14,30 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const captcha = useTurnstile()
 
   async function handleEmailSignIn(e: React.FormEvent) {
     e.preventDefault()
+    if (captcha.enabled && !captcha.token) {
+      setError('Please complete the verification challenge to continue.')
+      return
+    }
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      // Only sent when the captcha is enabled; Supabase verifies it against the
+      // Turnstile secret configured in Auth → Attack Protection.
+      ...(captcha.token ? { options: { captchaToken: captcha.token } } : {}),
+    })
 
     if (error) {
       setError(error.message)
       setLoading(false)
+      // Token is single-use — reset so a retry gets a fresh one.
+      captcha.reset()
       return
     }
 
@@ -72,7 +87,15 @@ export default function SignInPage() {
           />
         </div>
 
-        <button type="submit" className="auth-submit" disabled={loading}>
+        {captcha.enabled && (
+          <TurnstileWidget widgetRef={captcha.widgetRef} onScriptReady={captcha.onScriptReady} />
+        )}
+
+        <button
+          type="submit"
+          className="auth-submit"
+          disabled={loading || (captcha.enabled && !captcha.token)}
+        >
           {loading ? 'Signing in…' : 'Sign in →'}
         </button>
       </form>
