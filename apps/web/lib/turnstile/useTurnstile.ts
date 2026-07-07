@@ -46,7 +46,12 @@ export function useTurnstile() {
   const enabled = Boolean(siteKey)
 
   const [token, setToken] = useState<string | null>(null)
-  const [scriptReady, setScriptReady] = useState(false)
+  // Seed from an already-loaded script: navigating between auth pages is a soft
+  // nav, so next/script won't re-run api.js and won't re-fire its ready callback
+  // — without this the widget only appeared after a hard refresh.
+  const [scriptReady, setScriptReady] = useState<boolean>(
+    () => typeof window !== 'undefined' && Boolean(window.turnstile),
+  )
   const [node, setNode] = useState<HTMLDivElement | null>(null)
   const [widgetId, setWidgetId] = useState<string | null>(null)
 
@@ -89,7 +94,7 @@ export function useTurnstile() {
     token,
     /** Callback ref to attach to the widget container element. */
     widgetRef,
-    /** Call from the Turnstile script's onLoad. */
+    /** Call from the Turnstile script's onReady (fires on every mount). */
     onScriptReady: () => setScriptReady(true),
     /** Whether the Turnstile script has loaded. */
     scriptReady,

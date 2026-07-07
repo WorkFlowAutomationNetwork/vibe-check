@@ -25,7 +25,9 @@ export function TurnstileWidget({
         // implicit render because a widget already exists in this container").
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={onScriptReady}
+        // onReady (not onLoad) fires on every mount, so a soft nav to another
+        // auth page re-signals readiness even though api.js is already loaded.
+        onReady={onScriptReady}
       />
       <div
         ref={widgetRef}

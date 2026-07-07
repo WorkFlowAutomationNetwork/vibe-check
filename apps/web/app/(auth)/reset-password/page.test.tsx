@@ -10,10 +10,12 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { resetPasswordForEmail: resetMock } }),
 }))
 
-// next/script: render nothing but fire onLoad so the Turnstile-ready path runs.
+// next/script: render nothing but fire the ready callbacks so the
+// Turnstile-ready path runs (the component uses onReady).
 vi.mock('next/script', () => ({
-  default: ({ onLoad }: { onLoad?: () => void }) => {
+  default: ({ onLoad, onReady }: { onLoad?: () => void; onReady?: () => void }) => {
     onLoad?.()
+    onReady?.()
     return null
   },
 }))
