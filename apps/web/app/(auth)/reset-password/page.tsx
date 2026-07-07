@@ -24,7 +24,7 @@ export default function ResetPasswordPage() {
     setError(null)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/api/auth/callback?next=/settings`,
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/update-password`,
       // Only sent when the captcha is enabled; Supabase verifies it against the
       // Turnstile secret configured in Auth → Attack Protection.
       ...(captcha.token ? { captchaToken: captcha.token } : {}),
