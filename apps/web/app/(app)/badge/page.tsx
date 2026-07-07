@@ -3,7 +3,7 @@ import BadgeClient from '@/components/badge/BadgeClient'
 import { createServerClient } from '@/lib/supabase/server'
 import '../app.css'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vibe-check-app.com'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vibe-check-app.com'
 
 export default async function BadgePage() {
   const supabase = createServerClient()

@@ -10,7 +10,7 @@ export function waitlistEmail(email: string): { subject: string; html: string } 
 <body style="margin:0;padding:40px 20px;background:#FAFAF7;font-family:system-ui,-apple-system,sans-serif;">
   <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E6E6DE;border-radius:4px;padding:40px;">
     <div style="margin-bottom:32px;display:flex;align-items:center;gap:10px;">
-      <img src="https://vibe-check-app.com/android-chrome-512x512.png" alt="" width="32" height="32" style="display:block;border:0;">
+      <img src="https://www.vibe-check-app.com/android-chrome-512x512.png" alt="" width="32" height="32" style="display:block;border:0;">
       <span style="font-size:18px;font-weight:700;color:#0F0F0E;font-family:'Space Grotesk',system-ui,sans-serif;">Vibe-Check</span>
     </div>
     <h1 style="font-size:24px;font-weight:700;color:#0F0F0E;margin:0 0 16px;">You're on the list.</h1>
