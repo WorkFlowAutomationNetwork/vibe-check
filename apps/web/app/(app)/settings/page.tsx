@@ -34,6 +34,8 @@ export default function SettingsPage() {
   const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
   const [mfaEnrolled, setMfaEnrolled] = useState(false)
+  const [backupRemaining, setBackupRemaining] = useState<number | null>(null)
+  const [enrolledAt, setEnrolledAt] = useState<string | null>(null)
   const [regenCodes, setRegenCodes] = useState<string[] | null>(null)
   const [regenStatus, setRegenStatus] = useState<'idle' | 'working' | 'error'>('idle')
 
@@ -60,7 +62,16 @@ export default function SettingsPage() {
     }
   }, [supabase])
 
-  useEffect(() => { loadProfile() }, [loadProfile])
+  const loadMfaStatus = useCallback(async () => {
+    const res = await fetch('/api/auth/mfa/status')
+    if (!res.ok) return
+    const s = await res.json()
+    setMfaEnrolled(Boolean(s.enrolled))
+    setBackupRemaining(typeof s.backupCodesRemaining === 'number' ? s.backupCodesRemaining : null)
+    setEnrolledAt(s.enrolledAt ?? null)
+  }, [])
+
+  useEffect(() => { loadProfile(); loadMfaStatus() }, [loadProfile, loadMfaStatus])
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -113,6 +124,7 @@ export default function SettingsPage() {
     if (!res.ok) { setRegenStatus('error'); return }
     const { codes } = await res.json()
     setRegenCodes(codes)
+    setBackupRemaining(codes.length)
     setRegenStatus('idle')
   }
 
@@ -275,7 +287,7 @@ export default function SettingsPage() {
                 <h4>Authenticator app (TOTP)</h4>
                 <p>
                   {mfaEnrolled
-                    ? 'Two-factor authentication is enabled on your account.'
+                    ? `Two-factor authentication is enabled${enrolledAt ? ` — since ${new Date(enrolledAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.`
                     : 'Two-factor authentication is required. You will be prompted to set it up.'}
                 </p>
               </div>
@@ -292,6 +304,19 @@ export default function SettingsPage() {
 
             {mfaEnrolled && (
               <>
+                <div className="helper" style={{ marginTop: 12 }}>
+                  Backup codes are your fallback if you lose your authenticator — each works once.
+                  {backupRemaining !== null && (
+                    <>
+                      {' '}You have{' '}
+                      <strong style={{ color: backupRemaining <= 2 ? 'var(--danger)' : 'var(--ink-soft)' }}>
+                        {backupRemaining} of 8
+                      </strong>{' '}
+                      remaining.
+                      {backupRemaining <= 2 && ' Running low — regenerate to get a fresh set.'}
+                    </>
+                  )}
+                </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
                   <button className="btn btn-soft" onClick={regenerateCodes} disabled={regenStatus === 'working'}>
                     {regenStatus === 'working' ? 'Generating…' : 'Regenerate backup codes'}
