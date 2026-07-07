@@ -33,17 +33,24 @@ export default function SettingsPage() {
   const [rateLimit, setRateLimit] = useState<RateLimit>('polite')
   const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
+  const [mfaEnrolled, setMfaEnrolled] = useState(false)
+  const [backupRemaining, setBackupRemaining] = useState<number | null>(null)
+  const [enrolledAt, setEnrolledAt] = useState<string | null>(null)
+  const [regenCodes, setRegenCodes] = useState<string[] | null>(null)
+  const [regenStatus, setRegenStatus] = useState<'idle' | 'working' | 'error'>('idle')
+
   const loadProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setEmail(user.email ?? '')
     const { data } = await supabase
       .from('profiles')
-      .select('name, notify_cve_matched, notify_scan_complete, notify_badge_expiry, notify_weekly_digest, default_scan_depth, default_rate_limit')
+      .select('name, notify_cve_matched, notify_scan_complete, notify_badge_expiry, notify_weekly_digest, default_scan_depth, default_rate_limit, mfa_enrolled_at')
       .eq('id', user.id)
       .single()
     if (data) {
       setName(data.name ?? '')
+      setMfaEnrolled(Boolean(data.mfa_enrolled_at))
       setNotifs({
         notify_cve_matched: data.notify_cve_matched,
         notify_scan_complete: data.notify_scan_complete,
@@ -55,7 +62,16 @@ export default function SettingsPage() {
     }
   }, [supabase])
 
-  useEffect(() => { loadProfile() }, [loadProfile])
+  const loadMfaStatus = useCallback(async () => {
+    const res = await fetch('/api/auth/mfa/status')
+    if (!res.ok) return
+    const s = await res.json()
+    setMfaEnrolled(Boolean(s.enrolled))
+    setBackupRemaining(typeof s.backupCodesRemaining === 'number' ? s.backupCodesRemaining : null)
+    setEnrolledAt(s.enrolledAt ?? null)
+  }, [])
+
+  useEffect(() => { loadProfile(); loadMfaStatus() }, [loadProfile, loadMfaStatus])
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -99,6 +115,17 @@ export default function SettingsPage() {
 
   function toggleNotif(key: keyof typeof notifs) {
     setNotifs(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  async function regenerateCodes() {
+    setRegenStatus('working')
+    setRegenCodes(null)
+    const res = await fetch('/api/auth/mfa/regenerate-codes', { method: 'POST' })
+    if (!res.ok) { setRegenStatus('error'); return }
+    const { codes } = await res.json()
+    setRegenCodes(codes)
+    setBackupRemaining(codes.length)
+    setRegenStatus('idle')
   }
 
   const saveLabel = (s: 'idle' | 'saving' | 'saved' | 'error', idle = 'Save changes') =>
@@ -250,6 +277,75 @@ export default function SettingsPage() {
                 {defaultsStatus === 'saving' ? 'Saving…' : defaultsStatus === 'saved' ? '✓ Saved' : 'Save defaults'}
               </button>
             </div>
+          </section>
+
+          {/* TWO-FACTOR AUTH */}
+          <section className="settings-section">
+            <h2 className="section-label">Two-factor authentication</h2>
+            <div className="toggle-row" style={{ cursor: 'default' }}>
+              <div className="toggle-text">
+                <h4>Authenticator app (TOTP)</h4>
+                <p>
+                  {mfaEnrolled
+                    ? `Two-factor authentication is enabled${enrolledAt ? ` — since ${new Date(enrolledAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.`
+                    : 'Two-factor authentication is required. You will be prompted to set it up.'}
+                </p>
+              </div>
+              <span
+                className="pill-mini"
+                style={{
+                  color: mfaEnrolled ? '#3B6E1E' : '#7A4612',
+                  background: mfaEnrolled ? 'var(--lime-soft, #EAF7CE)' : 'var(--warn-soft, #F7EBD8)',
+                }}
+              >
+                {mfaEnrolled ? 'Enabled' : 'Setup required'}
+              </span>
+            </div>
+
+            {mfaEnrolled && (
+              <>
+                <div className="helper" style={{ marginTop: 12 }}>
+                  Backup codes are your fallback if you lose your authenticator — each works once.
+                  {backupRemaining !== null && (
+                    <>
+                      {' '}You have{' '}
+                      <strong style={{ color: backupRemaining <= 2 ? 'var(--danger)' : 'var(--ink-soft)' }}>
+                        {backupRemaining} of 8
+                      </strong>{' '}
+                      remaining.
+                      {backupRemaining <= 2 && ' Running low — regenerate to get a fresh set.'}
+                    </>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+                  <button className="btn btn-soft" onClick={regenerateCodes} disabled={regenStatus === 'working'}>
+                    {regenStatus === 'working' ? 'Generating…' : 'Regenerate backup codes'}
+                  </button>
+                  <Link href="/mfa/enroll" className="btn btn-soft">Reset authenticator</Link>
+                </div>
+                {regenStatus === 'error' && (
+                  <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>
+                    Couldn&apos;t generate codes. Make sure you completed the 2FA prompt this session, then retry.
+                  </div>
+                )}
+                {regenCodes && (
+                  <div style={{ marginTop: 14 }}>
+                    <div className="helper" style={{ marginBottom: 8 }}>
+                      Your new backup codes (each works once — old codes are now invalid):
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 14, background: 'var(--bg-sub)',
+                        border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: 14,
+                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
+                      }}
+                    >
+                      {regenCodes.map(c => <span key={c}>{c}</span>)}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </section>
 
           {/* DANGER ZONE */}

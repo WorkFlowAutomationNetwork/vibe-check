@@ -13,6 +13,7 @@ interface Profile {
   stripe_subscription_id: string | null
   default_scan_depth: string
   notify_scan_complete: boolean
+  mfa_enrolled_at: string | null
   created_at: string
   updated_at: string
 }
@@ -144,6 +145,12 @@ export default async function AdminUserDetailPage({
                   </span>
                 </div>
                 <div className="admin-kv-row">
+                  <span className="admin-kv-label">Two-factor</span>
+                  <span className="admin-kv-val">
+                    {profile?.mfa_enrolled_at ? `✓ Enrolled ${fmt(profile.mfa_enrolled_at)}` : '✗ Not enrolled'}
+                  </span>
+                </div>
+                <div className="admin-kv-row">
                   <span className="admin-kv-label">Stripe customer</span>
                   <span className="admin-kv-val" style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                     {profile?.stripe_customer_id ?? '—'}
@@ -212,6 +219,13 @@ export default async function AdminUserDetailPage({
                     Force confirm email
                   </button>
                 </form>
+                {profile?.mfa_enrolled_at && (
+                  <form method="POST" action={`/api/admin/users/${params.userId}/reset-mfa`}>
+                    <button type="submit" className="btn-admin" style={{ width: '100%' }}>
+                      Reset two-factor (break-glass)
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           </div>
