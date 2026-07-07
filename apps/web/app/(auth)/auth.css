@@ -211,6 +211,9 @@
   font-size: 13px;
   margin-bottom: 16px;
   line-height: 1.4;
+  /* Break long unbroken strings (e.g. an email address) so they don't bleed
+     past the box edge. */
+  overflow-wrap: anywhere;
 }
 
 .auth-success {
@@ -222,6 +225,9 @@
   font-size: 13px;
   margin-bottom: 16px;
   line-height: 1.5;
+  /* Break long unbroken strings (e.g. an email address) so they don't bleed
+     past the box edge. */
+  overflow-wrap: anywhere;
 }
 
 /* Footer link */
