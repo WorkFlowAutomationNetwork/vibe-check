@@ -68,3 +68,6 @@ PROJECT_STATUS.md
 # Local safety-net backups of gitignored files (created when env/docs were
 # symlinked to the OneDrive masters). Never committed — restore point only.
 .local-backups/
+
+# this is only for me, just the prep documents to start sharing the information online. 
+SocialStuff
