@@ -43,7 +43,7 @@ export default function PricingPage() {
               <div className="tier-price">$0</div>
               <p className="tier-sub">Passive scan, basic report. Good enough to know if you&apos;re actually in trouble.</p>
               <ul>
-                <li>Passive HTTP &amp; DNS analysis</li>
+                <li>Passive HTTP header analysis</li>
                 <li>Security headers &amp; TLS checks</li>
                 <li>1 URL, 1 scan per month</li>
                 <li>Plain-text report (web only)</li>
@@ -72,9 +72,9 @@ export default function PricingPage() {
               <p className="tier-sub">For sites under active development. Catches regressions before users do.</p>
               <ul>
                 <li>Everything in One-off, unlimited scans</li>
-                <li>Full GitHub + Vercel integration</li>
-                <li>Deploy-triggered re-scans (webhook)</li>
-                <li>Email alerts on new findings</li>
+                <li>GitHub integration for repo secret scanning</li>
+                <li>Deploy-triggered re-scans via webhook</li>
+                <li>Email alerts on completed scans</li>
                 <li>Badge renewed on each re-scan</li>
                 <li>Up to 5 URLs, 5 connected repos</li>
               </ul>
@@ -108,7 +108,7 @@ export default function PricingPage() {
             ],
             [
               'What happens to my data?',
-              'Scan results are stored in your account. We keep anonymised aggregate statistics ("X% of scanned apps have missing CSP headers"). We never share identifiable data. Delete your account at any time and everything goes — reports, findings, badge history.',
+              'Scan results are stored in your account. We keep anonymised aggregate statistics ("X% of scanned apps have missing CSP headers"). We never share identifiable data. Email us any time to delete your account and everything goes — reports, findings, badge history.',
             ],
             [
               'Can I scan a staging environment?',

@@ -82,7 +82,7 @@ export default function PrivacyPage() {
 
       <h3>6. How long we keep it (retention)</h3>
       <ul>
-        <li><strong>Scan findings &amp; metadata:</strong> kept for the lifetime of your account so your report history remains accessible. When you delete your account, all findings are purged as described below.</li>
+        <li><strong>Scan findings &amp; metadata:</strong> kept for the lifetime of your account so your report history remains accessible. When your account is deleted, all findings are purged as described below.</li>
         <li><strong>Report PDFs:</strong> stored for the lifetime of your account and deleted when your account is deleted.</li>
         <li><strong>Activity &amp; webhook logs:</strong> retained for <strong>30 days</strong>, then purged.</li>
         <li><strong>Deleted accounts:</strong> URLs, scans, findings, badges, and stored report PDFs are hard-deleted or irreversibly anonymised within <strong>30 days</strong> of account deletion.</li>
@@ -91,8 +91,10 @@ export default function PrivacyPage() {
       <h3>7. Your rights</h3>
       <p>
         Depending on your location, you have rights to access, export, correct, delete, and
-        object to processing of your personal data, and to withdraw consent. You can delete
-        your account and associated data from the app, or contact us to exercise any right. We
+        object to processing of your personal data, and to withdraw consent. To exercise any of
+        these — including deleting your account or requesting a copy of your data — email us at{' '}
+        <span style={{ fontFamily: 'var(--font-mono)' }}>privacy@vibe-check-app.com</span> or{' '}
+        <span style={{ fontFamily: 'var(--font-mono)' }}>support@vibe-check-app.com</span>. We
         respond within the period required by applicable law.
       </p>
 
