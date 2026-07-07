@@ -9,11 +9,12 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalShell title="Terms of Service" lastUpdated="[EFFECTIVE DATE]">
+    <LegalShell title="Terms of Service" lastUpdated="7 July 2026">
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) are a binding agreement between you
-        and <strong>[LEGAL ENTITY NAME]</strong> (&ldquo;Vibe-Check&rdquo;,
-        &ldquo;we&rdquo;, &ldquo;us&rdquo;), governing your access to and use of the
+        and <strong>WorkFlow Automation Network (ABN 43 637 993 462)</strong>, a sole trader
+        based in Victoria, Australia (&ldquo;Vibe-Check&rdquo;, &ldquo;we&rdquo;,
+        &ldquo;us&rdquo;), governing your access to and use of the
         Vibe-Check website, scanning service, reports, and trust badge (together, the
         &ldquo;Service&rdquo;). By creating an account or using the Service you agree to
         these Terms. If you do not agree, do not use the Service.
@@ -67,9 +68,9 @@ export default function TermsPage() {
       <p>
         Our total aggregate liability for any claim arising out of or relating to the Service
         is limited to the greater of (a) the fees you paid to Vibe-Check in the twelve (12)
-        months preceding the event giving rise to the claim, or (b) <strong>[SMALL FIXED SUM,
-        e.g. USD 50]</strong> for free-tier users. Some jurisdictions do not allow certain
-        limitations, so parts of this section may not apply to you.
+        months preceding the event giving rise to the claim, or (b) <strong>AUD 50</strong> for
+        free-tier users. Some jurisdictions do not allow certain limitations, so parts of this
+        section may not apply to you.
       </p>
 
       <h3>4. Acceptable use</h3>
@@ -144,16 +145,17 @@ export default function TermsPage() {
 
       <h3>9. Governing law</h3>
       <p>
-        These Terms are governed by the laws of <strong>[JURISDICTION]</strong>, without
-        regard to conflict-of-laws rules, and the courts of <strong>[VENUE]</strong> have
-        exclusive jurisdiction, except where mandatory local law provides otherwise.
+        These Terms are governed by the laws of <strong>Victoria, Australia</strong>,
+        without regard to conflict-of-laws rules, and the courts of{' '}
+        <strong>Victoria</strong> have exclusive jurisdiction, except where mandatory local
+        law (including the Australian Consumer Law) provides otherwise.
       </p>
 
       <h3>10. Contact</h3>
       <p>
-        Questions about these Terms: <strong>[LEGAL ENTITY NAME]</strong>,{' '}
-        <span style={{ fontFamily: 'var(--font-mono)' }}>legal@vibe-check-app.com</span>,{' '}
-        <strong>[POSTAL ADDRESS]</strong>.
+        Questions about these Terms: <strong>WorkFlow Automation Network (ABN 43 637 993 462)</strong>,{' '}
+        <span style={{ fontFamily: 'var(--font-mono)' }}>legal@vibe-check-app.com</span>. A postal
+        address for formal notices is available on request.
       </p>
     </LegalShell>
   )

@@ -20,7 +20,7 @@ export default function SignUpPage() {
 
   // Version identifier for the Terms/Privacy the user is accepting. Bump when
   // the documents materially change so acceptance records remain meaningful.
-  const TERMS_VERSION = '[TERMS-VERSION-DATE]'
+  const TERMS_VERSION = '2026-07-07'
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
