@@ -9,7 +9,7 @@ describe('welcomeEmail', () => {
 
   it('html contains dashboard link', () => {
     const { html } = welcomeEmail('alice@example.com')
-    expect(html).toContain('https://www.vibe-check-app.com/dashboard')
+    expect(html).toContain('https://vibe-check-app.com/dashboard')
   })
 
   it('html contains user email', () => {

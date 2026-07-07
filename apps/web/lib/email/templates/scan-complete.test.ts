@@ -16,7 +16,7 @@ describe('scanCompleteEmail', () => {
 
   it('html contains the report URL', () => {
     const { html } = scanCompleteEmail(base)
-    expect(html).toContain('https://www.vibe-check-app.com/report/scan-123')
+    expect(html).toContain('https://vibe-check-app.com/report/scan-123')
   })
 
   it('html contains the scanned URL', () => {
