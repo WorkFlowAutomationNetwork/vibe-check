@@ -76,12 +76,19 @@ describe('GET /api/billing/checkout', () => {
     )
   })
 
-  it('creates a subscription session for monitor (no customer_creation)', async () => {
+  it('does not offer promotion codes on the one-off starter session', async () => {
+    await call('starter')
+    const arg = checkoutCreate.mock.calls[0][0] as Record<string, unknown>
+    expect(arg).not.toHaveProperty('allow_promotion_codes')
+  })
+
+  it('creates a subscription session for monitor (no customer_creation) and allows promo codes', async () => {
     const res = await call('monitor')
     expect(res.headers.get('location')).toBe('https://checkout.stripe.com/c/session_abc')
     const arg = checkoutCreate.mock.calls[0][0] as Record<string, unknown>
     expect(arg.mode).toBe('subscription')
     expect(arg).not.toHaveProperty('customer_creation')
+    expect(arg.allow_promotion_codes).toBe(true)
   })
 
   it('reuses an existing Stripe customer instead of customer_creation', async () => {
