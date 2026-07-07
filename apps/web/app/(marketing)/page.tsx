@@ -13,13 +13,13 @@ export const revalidate = 3600
 export default async function LandingPage() {
   const stats = await getLandingStats()
 
-  // Hard-error fallback only: if the stats RPC is unreachable, show the original
-  // copy so SSR/layout never breaks. The normal path shows real numbers.
-  const scansRun = stats ? stats.scansRun.toLocaleString('en-US') : '2,431'
-  const sitesChecked = stats ? stats.sitesChecked.toLocaleString('en-US') : '2,431'
-  const avgVulns = stats ? stats.avgVulns.toFixed(1) : '6.2'
-  const repoScansRun = stats ? stats.repoScansRun.toLocaleString('en-US') : '0'
-  const secretsFound = stats ? stats.secretsFound.toLocaleString('en-US') : '0'
+  // Real aggregates only. If the stats RPC is unreachable we render null and the
+  // count-bearing UI below is omitted — we never invent usage numbers.
+  const scansRun = stats ? stats.scansRun.toLocaleString('en-US') : null
+  const sitesChecked = stats ? stats.sitesChecked.toLocaleString('en-US') : null
+  const avgVulns = stats ? stats.avgVulns.toFixed(1) : null
+  const repoScansRun = stats ? stats.repoScansRun.toLocaleString('en-US') : null
+  const secretsFound = stats ? stats.secretsFound.toLocaleString('en-US') : null
 
   return (
     <>
@@ -44,7 +44,7 @@ export default async function LandingPage() {
       {/* HERO */}
       <section className="hero">
         <div className="container">
-          <div className="hero-eyebrow"><span className="dot" /> Scanning live · {sitesChecked} sites checked</div>
+          <div className="hero-eyebrow"><span className="dot" /> Scanning live{sitesChecked ? ` · ${sitesChecked} sites checked` : ''}</div>
           <h1>Your app passed the <span className="strike">vibe check</span>.<br />But did it pass a <span className="accent">security check</span>?</h1>
           <p className="sub">Shipped something with Claude, Cursor, or v0 at 2am? We probe the things you probably forgot about. Verify ownership once, get a graded report in as little as 60 seconds.</p>
 
@@ -70,10 +70,10 @@ export default async function LandingPage() {
         <div className="container">
           <p className="trust-line">Built for the generation that <em>ships first</em> and asks questions later.</p>
           <div className="pills">
-            <div className="pill"><span className="pillIcon">↑</span><b>{scansRun}</b> scans run</div>
-            <div className="pill"><span className="pillIcon">!</span> avg <b>{avgVulns}</b> vulnerabilities found</div>
-            <div className="pill"><span className="pillIcon">⎇</span><b>{repoScansRun}</b> repo scans run</div>
-            <div className="pill"><span className="pillIcon">🔑</span><b>{secretsFound}</b> secrets caught</div>
+            {scansRun && <div className="pill"><span className="pillIcon">↑</span><b>{scansRun}</b> scans run</div>}
+            {avgVulns && <div className="pill"><span className="pillIcon">!</span> avg <b>{avgVulns}</b> vulnerabilities found</div>}
+            {repoScansRun && <div className="pill"><span className="pillIcon">⎇</span><b>{repoScansRun}</b> repo scans run</div>}
+            {secretsFound && <div className="pill"><span className="pillIcon">🔑</span><b>{secretsFound}</b> secrets caught</div>}
             <div className="pill"><span className="pillIcon">~</span> free scan in <b>~60s</b></div>
             <div className="pill"><span className="pillIcon">$</span> from <b>$0</b>, no card needed</div>
           </div>
@@ -117,10 +117,10 @@ export default async function LandingPage() {
               <div className="more"><span>full history</span><span>stripe keys</span><span>aws credentials</span></div>
             </div>
             <div className="check-card">
-              <div className="ico">/&gt;</div>
-              <h3>Exposed endpoints</h3>
-              <p>That debug route you left on. The unauthenticated /api/users. The .env in /public. We find them so attackers don&apos;t.</p>
-              <div className="more"><span>/api/*</span><span>/.well-known</span><span>/_next</span></div>
+              <div className="ico">DB</div>
+              <h3>Exposed Supabase backend</h3>
+              <p>Publicly-readable tables and storage buckets with row-level security left off — the classic vibe-coded Supabase leak that hands strangers your data.</p>
+              <div className="more"><span>rest tables</span><span>storage buckets</span><span>missing RLS</span></div>
             </div>
             <div className="check-card">
               <div className="ico">⏱</div>
@@ -129,10 +129,10 @@ export default async function LandingPage() {
               <div className="more"><span>login brute-force</span><span>reset abuse</span><span>api throttling</span></div>
             </div>
             <div className="check-card">
-              <div className="ico">⚙</div>
-              <h3>Misconfigurations</h3>
-              <p>Public S3 buckets. CORS set to <code>*</code>. Stripe test keys in production. The usual suspects, automated.</p>
-              <div className="more"><span>cors</span><span>secrets</span><span>cloud</span></div>
+              <div className="ico">KEY</div>
+              <h3>Leaked secrets &amp; known CVEs</h3>
+              <p>API keys and tokens shipped in your front-end JavaScript bundle, plus a Nuclei sweep for thousands of known-vulnerability and exposure templates on deep scans.</p>
+              <div className="more"><span>js bundle keys</span><span>nuclei templates</span><span>known cves</span></div>
             </div>
           </div>
         </div>
@@ -208,7 +208,7 @@ export default async function LandingPage() {
               <div className="tier-price">$0</div>
               <p className="tier-sub">Passive scan, basic report. Good enough to know if you&apos;re actually in trouble.</p>
               <ul>
-                <li>Passive HTTP &amp; DNS analysis</li>
+                <li>Passive HTTP header analysis</li>
                 <li>Security headers &amp; TLS checks</li>
                 <li>1 URL, 1 scan per month</li>
                 <li>Plain-text report (web only)</li>
@@ -237,9 +237,9 @@ export default async function LandingPage() {
               <p className="tier-sub">For sites under active development. Catches regressions before users do.</p>
               <ul>
                 <li>Everything in One-off, unlimited scans</li>
-                <li>Full GitHub + Vercel integration</li>
-                <li>Deploy-triggered re-scans (webhook)</li>
-                <li>Email alerts on new findings</li>
+                <li>GitHub integration for repo secret scanning</li>
+                <li>Deploy-triggered re-scans via webhook</li>
+                <li>Email alerts on completed scans</li>
                 <li>Badge renewed on each re-scan</li>
                 <li>Up to 5 URLs, 5 connected repos</li>
               </ul>
