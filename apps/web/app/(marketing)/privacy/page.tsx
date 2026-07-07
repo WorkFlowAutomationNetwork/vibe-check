@@ -47,8 +47,8 @@ export default function PrivacyPage() {
       <h3>4. International transfers</h3>
       <p>
         Our scanning infrastructure runs in <strong>Australia (Sydney, on Fly.io)</strong>.
-        Our web application is hosted on Vercel and our database on Supabase, whose exact
-        processing region(s) are <strong>[CONFIRM SUPABASE + VERCEL REGION]</strong>. Where
+        Our database is hosted on Supabase in <strong>Australia (Sydney, ap-southeast-2)</strong>,
+        and our web application is hosted on Vercel in <strong>Australia (Sydney, syd1)</strong>. Where
         personal data of EU/UK users is transferred outside the EEA/UK, we rely on appropriate
         safeguards such as the Standard Contractual Clauses.{' '}
         <strong>[Confirm transfer mechanism with counsel.]</strong>
