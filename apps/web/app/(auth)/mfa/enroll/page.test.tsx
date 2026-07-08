@@ -21,7 +21,10 @@ import MfaEnrollPage from './page'
 beforeEach(() => {
   vi.clearAllMocks()
   listFactors.mockResolvedValue({ data: { all: [] } })
-  enroll.mockResolvedValue({ data: { id: 'factor-1', totp: { qr_code: '<svg/>', secret: 'ABCDEF' } } })
+  // Supabase returns qr_code as a complete data: URI, not a bare SVG string.
+  enroll.mockResolvedValue({
+    data: { id: 'factor-1', totp: { qr_code: 'data:image/svg+xml;utf-8,<svg/>', secret: 'ABCDEF' } },
+  })
   challengeAndVerify.mockResolvedValue({ error: null })
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true, json: async () => ({ codes: ['aaaa-1111', 'bbbb-2222'] }),
@@ -35,6 +38,14 @@ describe('MfaEnrollPage', () => {
     render(<MfaEnrollPage />)
     await waitFor(() => expect(enroll).toHaveBeenCalledWith({ factorType: 'totp' }))
     expect(await screen.findByText('ABCDEF')).toBeInTheDocument()
+  })
+
+  it('renders the QR code using the data: URI verbatim (no double-wrapping)', async () => {
+    render(<MfaEnrollPage />)
+    const img = await screen.findByAltText('TOTP QR code')
+    // Must be the exact value Supabase returned — re-wrapping it in another
+    // `data:image/svg+xml;utf-8,${encodeURIComponent(...)}` produces a broken image.
+    expect(img).toHaveAttribute('src', 'data:image/svg+xml;utf-8,<svg/>')
   })
 
   it('verifies the code, completes enrollment, and shows backup codes', async () => {

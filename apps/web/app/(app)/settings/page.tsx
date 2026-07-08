@@ -302,6 +302,14 @@ export default function SettingsPage() {
               </span>
             </div>
 
+            {!mfaEnrolled && (
+              <div style={{ display: 'flex', marginTop: 14 }}>
+                <Link href="/mfa/enroll" className="btn btn-primary">
+                  Set up two-factor authentication →
+                </Link>
+              </div>
+            )}
+
             {mfaEnrolled && (
               <>
                 <div className="helper" style={{ marginTop: 12 }}>
