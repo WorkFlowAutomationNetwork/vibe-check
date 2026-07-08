@@ -58,23 +58,31 @@ export async function POST(request: Request) {
       // and not dependent on a mutable email.
       const userId = session.client_reference_id ?? session.metadata?.user_id
       if (session.customer && userId) {
-        const update: { stripe_customer_id: string; plan?: 'starter' | 'monitor'; plan_expires_at?: string | null } = {
+        const update: {
+          stripe_customer_id: string
+          plan?: 'starter' | 'monitor'
+          plan_expires_at?: string | null
+          stripe_subscription_id?: string
+        } = {
           stripe_customer_id: session.customer as string,
         }
-        // One-time purchases (mode: 'payment', e.g. Starter) have no
-        // subscription object, so customer.subscription.created never fires —
-        // the plan has to be set here, from the metadata the checkout route
-        // attached, instead of via resolvePlan()'s subscription price lookup.
-        if (session.mode === 'payment') {
-          const metadataPlan = session.metadata?.plan
-          if (metadataPlan === 'starter' || metadataPlan === 'monitor') {
-            update.plan = metadataPlan
-            // Starter is a 30-day plan window, not a permanent unlock --
-            // user_plan() reads this back as 'free' once it passes (see
-            // migration 20260701000030). Re-purchasing simply resets the clock.
-            update.plan_expires_at = metadataPlan === 'starter'
-              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-              : null
+        // Set the plan directly from the metadata the checkout route attached,
+        // for BOTH modes. One-time Starter (mode: 'payment') has no subscription
+        // object, so customer.subscription.created never fires. Monitor
+        // (mode: 'subscription') is normally set by customer.subscription.*, but
+        // those match on stripe_customer_id — which is only linked here — so if
+        // that event arrives before/without this one the plan would silently
+        // never activate. Setting it here too makes activation order-independent.
+        const metadataPlan = session.metadata?.plan
+        if (metadataPlan === 'starter' || metadataPlan === 'monitor') {
+          update.plan = metadataPlan
+          // Starter is a 30-day one-off window (user_plan() reverts it to 'free'
+          // once it passes, see migration 20260701000030); Monitor is open-ended.
+          update.plan_expires_at = metadataPlan === 'starter'
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            : null
+          if (session.mode === 'subscription' && session.subscription) {
+            update.stripe_subscription_id = session.subscription as string
           }
         }
         await supabase.from('profiles').update(update).eq('id', userId)

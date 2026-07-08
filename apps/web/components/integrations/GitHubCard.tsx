@@ -11,9 +11,11 @@ const DATA_HANDLING_COPY =
 export default function GitHubCard({
   installation,
   repos,
+  canConnect = true,
 }: {
   installation: Installation | null
   repos: Repo[]
+  canConnect?: boolean
 }) {
   const connected = installation?.status === 'active'
   return (
@@ -60,9 +62,16 @@ export default function GitHubCard({
             </form>
           </div>
         </>
-      ) : (
+      ) : canConnect ? (
         <div className="int-actions">
           <a className="btn btn-primary" href="/api/integrations/github/install" target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', fontSize: 13 }}>Connect GitHub</a>
+        </div>
+      ) : (
+        <div className="int-actions" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+          <p className="int-desc" style={{ margin: 0 }}>
+            Repo scanning is included with a one-time scan or the Monitor plan. Your free plan doesn&rsquo;t include it yet.
+          </p>
+          <a className="btn btn-primary" href="/billing" style={{ padding: '8px 12px', fontSize: 13 }}>Purchase a scan to connect →</a>
         </div>
       )}
 

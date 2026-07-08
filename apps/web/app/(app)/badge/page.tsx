@@ -10,6 +10,9 @@ export default async function BadgePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
+  const { data: entitlements } = await supabase.from('my_entitlements').select('plan').maybeSingle()
+  const isPaid = entitlements?.plan === 'starter' || entitlements?.plan === 'monitor'
+
   // Get user's URL IDs, then find their active badge
   const { data: urls } = await supabase
     .from('urls')
@@ -20,7 +23,7 @@ export default async function BadgePage() {
   const urlIds = (urls ?? []).map(u => u.id)
 
   if (urlIds.length === 0) {
-    return <BadgeClient badge={null} appUrl={APP_URL} />
+    return <BadgeClient badge={null} appUrl={APP_URL} isPaid={isPaid} />
   }
 
   const { data: badge } = await supabase
@@ -33,7 +36,7 @@ export default async function BadgePage() {
     .maybeSingle()
 
   if (!badge) {
-    return <BadgeClient badge={null} appUrl={APP_URL} />
+    return <BadgeClient badge={null} appUrl={APP_URL} isPaid={isPaid} />
   }
 
   const [{ data: scan }, { data: urlRow }] = await Promise.all([
@@ -49,5 +52,5 @@ export default async function BadgePage() {
     public_report_enabled: urlRow?.public_report_enabled ?? false,
   }
 
-  return <BadgeClient badge={badgeWithRelations} appUrl={APP_URL} />
+  return <BadgeClient badge={badgeWithRelations} appUrl={APP_URL} isPaid={isPaid} />
 }

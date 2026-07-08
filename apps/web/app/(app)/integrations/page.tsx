@@ -25,6 +25,11 @@ export default async function IntegrationsPage() {
         .eq('status', 'active')
     : { data: [] }
 
+  const { data: entitlements } = user
+    ? await supabase.from('my_entitlements').select('can_integrations').maybeSingle()
+    : { data: null }
+  const canConnect = Boolean(entitlements?.can_integrations)
+
   return (
     <AppShell activeNav="integrations">
       <main className="app-main">
@@ -37,7 +42,7 @@ export default async function IntegrationsPage() {
 
         <h2 className="section-label">Connected services</h2>
         <div className="int-grid">
-          <GitHubCard installation={installation ?? null} repos={repos ?? []} />
+          <GitHubCard installation={installation ?? null} repos={repos ?? []} canConnect={canConnect} />
           <VercelCard />
         </div>
       </main>
