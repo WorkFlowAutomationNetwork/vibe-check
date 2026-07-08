@@ -18,7 +18,7 @@ const PLAN_PRICES: Record<string, string> = {
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   free: 'Passive scan only, one per month. No active probes, no badge, no report sharing.',
-  starter: 'One active scan, shareable report, and a 30-day trust badge. Reverts to Free after 30 days.',
+  starter: 'One active scan, a GitHub repo secret scan, a shareable report, and a 30-day trust badge. Reverts to Free after 30 days.',
   monitor: 'Continuous monitoring, full GitHub + Vercel integration, deploy-triggered re-scans, email alerts, up to 5 URLs and 5 repos.',
 }
 
@@ -88,7 +88,7 @@ export default async function BillingPage() {
             )}
             <div className="pactions">
               {plan === 'free' && (
-                <Link href="/api/billing/checkout?plan=starter" className="btn btn-lime">↑ Upgrade to Starter</Link>
+                <Link href="/api/billing/checkout?plan=starter" className="btn btn-lime">Purchase one-time scan</Link>
               )}
               {plan === 'starter' && (
                 <Link href="/api/billing/checkout?plan=monitor" className="btn btn-lime">↑ Upgrade to Monitor</Link>
@@ -257,7 +257,7 @@ export default async function BillingPage() {
               {plan === 'starter'
                 ? <button className="current-btn">current plan</button>
                 : <Link href="/api/billing/checkout?plan=starter" className="upgrade-btn">
-                    {plan === 'free' ? 'Upgrade to Starter →' : 'Switch to Starter'}
+                    {plan === 'free' ? 'Purchase one-time scan →' : 'Buy a one-off scan'}
                   </Link>}
             </div>
             <div>

@@ -61,6 +61,7 @@ export default function PricingPage() {
                 <li>Shareable HTML report + PDF export</li>
                 <li>&ldquo;Vibe-Checked ✓&rdquo; badge, valid 30 days</li>
                 <li>1 URL, 1 successful scan included</li>
+                <li>GitHub repo secret scan included (1 repo)</li>
                 <li>30-day unlock — reverts to Free afterward</li>
               </ul>
               <Link href="/sign-up" className="tier-cta">Buy a scan →</Link>
