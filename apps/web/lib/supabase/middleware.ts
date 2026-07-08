@@ -43,6 +43,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith('/integrations') ||
     path.startsWith('/settings') ||
     path.startsWith('/billing') ||
+    path.startsWith('/roadmap') ||
     path.startsWith('/admin')
 
   const isAuthPage = request.nextUrl.pathname === '/sign-in' ||

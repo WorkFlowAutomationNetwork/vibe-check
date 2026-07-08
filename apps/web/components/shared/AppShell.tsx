@@ -7,7 +7,7 @@ import SignOutButton from '@/components/shared/SignOutButton'
 
 interface AppShellProps {
   children: React.ReactNode
-  activeNav?: 'dashboard' | 'urls' | 'reports' | 'repos' | 'badge' | 'integrations' | 'billing' | 'settings'
+  activeNav?: 'dashboard' | 'urls' | 'reports' | 'repos' | 'badge' | 'integrations' | 'billing' | 'settings' | 'roadmap'
 }
 
 export default function AppShell({ children, activeNav }: AppShellProps) {
@@ -63,6 +63,9 @@ export default function AppShell({ children, activeNav }: AppShellProps) {
           </Link>
           <Link href="/settings" className={activeNav === 'settings' ? 'active' : ''}>
             <span className="nav-ico">⚙</span> Settings
+          </Link>
+          <Link href="/roadmap" className={activeNav === 'roadmap' ? 'active' : ''}>
+            <span className="nav-ico">◆</span> Roadmap
           </Link>
           {isAdmin && (
             <>
