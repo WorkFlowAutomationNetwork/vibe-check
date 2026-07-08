@@ -303,7 +303,9 @@ export default function OnboardFlow() {
 
             {state.verifyStatus === 'failed' && (
               <div style={{ background: '#fef2f2', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 16, fontSize: 13 }}>
-                Verification failed — we couldn&apos;t find the token. Double-check it&apos;s deployed and try again.
+                {state.verifyMethod === 'dns'
+                  ? <>Verification failed — we couldn&apos;t find the token. Double-check the TXT record is saved exactly, then wait about a minute for DNS to propagate and try again.</>
+                  : <>Verification failed — we couldn&apos;t find the token. Double-check it&apos;s deployed, then wait a moment and try again.</>}
               </div>
             )}
 

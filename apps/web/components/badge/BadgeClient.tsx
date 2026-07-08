@@ -20,13 +20,14 @@ interface BadgeData {
 interface Props {
   badge: BadgeData | null
   appUrl: string
+  isPaid?: boolean
 }
 
 function formatExpiry(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function BadgeClient({ badge, appUrl }: Props) {
+export default function BadgeClient({ badge, appUrl, isPaid = true }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
   const [publicReportEnabled, setPublicReportEnabled] = useState(badge?.public_report_enabled ?? false)
   const [togglePending, setTogglePending] = useState(false)
@@ -93,13 +94,27 @@ export default function BadgeClient({ badge, appUrl }: Props) {
             marginBottom: 28,
           }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, color: 'var(--line)', marginBottom: 16 }}>✓</div>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>No active badge</div>
-            <div style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 20, maxWidth: '40ch', margin: '0 auto 20px' }}>
-              Run an active scan on a verified URL to earn your Vibe-Checked badge.
-            </div>
-            <Link href="/onboard" className="btn btn-primary" style={{ padding: '10px 20px', fontSize: 13 }}>
-              + Add URL and scan →
-            </Link>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>No badge yet</div>
+            {isPaid ? (
+              <>
+                <div style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 20, maxWidth: '42ch', margin: '0 auto 20px' }}>
+                  Your Vibe-Checked badge is issued when a full (active) scan completes on a verified URL.
+                </div>
+                <Link href="/onboard" className="btn btn-primary" style={{ padding: '10px 20px', fontSize: 13 }}>
+                  + Add URL and scan →
+                </Link>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 20, maxWidth: '46ch', margin: '0 auto 20px' }}>
+                  The Vibe-Checked badge is earned on a full scan, which isn&rsquo;t part of the free plan.
+                  Purchase a one-time scan or upgrade to Monitor to run one and earn your badge.
+                </div>
+                <Link href="/billing" className="btn btn-primary" style={{ padding: '10px 20px', fontSize: 13 }}>
+                  See plans →
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <>
