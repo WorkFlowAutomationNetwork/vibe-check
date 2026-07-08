@@ -4,63 +4,200 @@
 <meta charset="utf-8">
 <title>Vibe-Check report — {{ url }}</title>
 <style>
-  @page { size: A4; margin: 2.2cm 1.8cm; }
-  body { font-family: 'Helvetica', Arial, sans-serif; color: #0F0F0E; font-size: 11px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 14px; margin: 24px 0 10px; border-bottom: 1.5px solid #E6E6DE; padding-bottom: 6px; }
-  .meta { color: #54544F; font-size: 10px; margin-bottom: 4px; }
-  .grade-card { display: flex; align-items: center; gap: 18px; border: 1.5px solid #0F0F0E; border-radius: 4px; padding: 16px 20px; margin: 18px 0; }
-  .grade-num { font-size: 36px; font-weight: 700; }
-  .grade-note { color: #54544F; font-size: 11px; }
-  .finding { border: 1px solid #E6E6DE; border-radius: 4px; padding: 10px 14px; margin-bottom: 8px; page-break-inside: avoid; }
-  .finding-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
-  .badge { display: inline-block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 2px; margin-right: 8px; }
-  .badge.critical { background: #E25C3A; color: #fff; }
-  .badge.medium { background: #D88934; color: #fff; }
-  .badge.low { background: #EDE4FE; color: #5B21B6; }
-  .badge.info { background: #F2F2EC; color: #54544F; }
-  .badge.pass { background: #C6F24E; color: #0F0F0E; }
-  .field { margin-top: 4px; }
-  .field b { color: #54544F; }
-  .footer { margin-top: 30px; color: #8A8A82; font-size: 9px; }
+  @page {
+    size: A4;
+    margin: 1.7cm 1.5cm 1.9cm;
+    @bottom-center {
+      content: "Vibe-Check security report · page " counter(page) " of " counter(pages);
+      font-family: "DejaVu Sans Mono", "Courier New", monospace;
+      font-size: 8px;
+      color: #8A8A82;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, "Arial", "DejaVu Sans", sans-serif;
+    color: #0F0F0E;
+    font-size: 10.5px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .mono { font-family: "DejaVu Sans Mono", "Courier New", monospace; }
+
+  /* Header */
+  table.hdr { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  table.hdr td { vertical-align: middle; padding: 0; }
+  .logo-lockup { font-size: 0; }
+  .logo-mark {
+    display: inline-block; width: 24px; height: 24px;
+    background: #0F0F0E; color: #C6F24E; border-radius: 4px;
+    text-align: center; line-height: 24px; font-size: 15px; font-weight: 700;
+    vertical-align: middle;
+  }
+  .logo-word {
+    display: inline-block; vertical-align: middle; margin-left: 9px;
+    font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .hdr-label {
+    text-align: right; font-size: 9px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: #7C3AED;
+  }
+  .rule { height: 2px; background: #0F0F0E; margin: 10px 0 18px; }
+
+  /* Title + meta */
+  h1.report-url {
+    font-size: 21px; font-weight: 700; letter-spacing: -0.02em;
+    margin: 0 0 6px; word-wrap: break-word;
+  }
+  .meta { font-size: 9px; color: #54544F; letter-spacing: 0.02em; }
+
+  /* Grade hero */
+  table.grade { width: 100%; border-collapse: separate; margin: 16px 0 6px; }
+  table.grade td { vertical-align: middle; }
+  .grade-box {
+    width: 108px; border: 2px solid #0F0F0E; border-radius: 6px;
+    padding: 12px 6px; text-align: center; box-shadow: 4px 4px 0 #0F0F0E;
+  }
+  .grade-letter { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+  .grade-caption { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A8A82; margin-top: 4px; }
+  .grade-side { padding-left: 22px; }
+  .score-line { font-size: 12px; color: #54544F; margin-bottom: 10px; }
+  .score-line b { color: #0F0F0E; font-size: 15px; }
+
+  /* Severity summary chips */
+  .chips { font-size: 0; }
+  .chip {
+    display: inline-block; margin: 0 6px 6px 0; padding: 4px 9px;
+    border: 1.5px solid #0F0F0E; border-radius: 3px;
+    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.03em;
+  }
+  .chip b { font-size: 10px; }
+  .chip.c-critical { background: #FBE3DA; color: #B23A1C; }
+  .chip.c-medium   { background: #F8E4CA; color: #8A5312; }
+  .chip.c-low      { background: #EDE4FE; color: #5B21B6; }
+  .chip.c-info     { background: #F2F2EC; color: #54544F; }
+  .chip.c-pass     { background: #EEF8C7; color: #4F6E15; }
+
+  /* Section headings */
+  h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 26px 0 12px; padding-bottom: 7px; border-bottom: 1.5px solid #E6E6DE;
+  }
+
+  /* Finding cards */
+  .finding {
+    border: 1px solid #E6E6DE; border-left-width: 4px; border-radius: 4px;
+    padding: 10px 14px; margin-bottom: 9px; page-break-inside: avoid;
+    background: #FFFFFF;
+  }
+  .finding.s-critical { border-left-color: #E25C3A; }
+  .finding.s-medium   { border-left-color: #D88934; }
+  .finding.s-low      { border-left-color: #7C3AED; }
+  .finding.s-info     { border-left-color: #8A8A82; }
+  .finding.s-pass     { border-left-color: #A9D936; }
+
+  .sev {
+    display: inline-block; margin-right: 9px; padding: 2px 8px; border-radius: 2px;
+    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    vertical-align: middle;
+  }
+  .sev.critical { background: #E25C3A; color: #fff; }
+  .sev.medium   { background: #D88934; color: #fff; }
+  .sev.low      { background: #EDE4FE; color: #5B21B6; }
+  .sev.info     { background: #F2F2EC; color: #54544F; }
+  .sev.pass     { background: #C6F24E; color: #0F0F0E; }
+
+  .finding-title { font-weight: 700; font-size: 11.5px; margin-bottom: 5px; }
+  .finding-title .t { vertical-align: middle; }
+  .field { margin-top: 5px; font-size: 10px; }
+  .field .lbl {
+    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-size: 8px; text-transform: uppercase; letter-spacing: 0.06em; color: #7C3AED;
+    display: block; margin-bottom: 1px;
+  }
+  .empty { color: #8A8A82; font-size: 10px; padding: 4px 0; }
+
+  .footer {
+    margin-top: 26px; padding-top: 10px; border-top: 1px solid #E6E6DE;
+    color: #8A8A82; font-size: 8.5px; line-height: 1.5;
+  }
 </style>
 </head>
 <body>
-  <h1>Vibe-Check security report</h1>
-  <div class="meta">{{ url }}</div>
-  <div class="meta">scan id {{ scan.id }} · mode {{ scan.scan_type }} · generated {{ generated_at }}</div>
+  {% set gletter = ((scan.grade or '')|string)[:1]|upper %}
+  {% set gcolor = {'A':'#A9D936','B':'#7C3AED','C':'#D88934','D':'#D88934','F':'#E25C3A'}.get(gletter, '#8A8A82') %}
+  {% set crit = issues|selectattr('severity','equalto','critical')|list|length %}
+  {% set med  = issues|selectattr('severity','equalto','medium')|list|length %}
+  {% set low  = issues|selectattr('severity','equalto','low')|list|length %}
+  {% set info = issues|selectattr('severity','equalto','info')|list|length %}
 
-  <div class="grade-card">
-    <div class="grade-num">{{ scan.grade or '—' }}</div>
-    <div class="grade-note">Score {{ scan.score if scan.score is not none else '—' }}/100 · {{ issues|length }} issue(s) · {{ passes|length }} passed check(s)</div>
-  </div>
+  <table class="hdr">
+    <tr>
+      <td class="logo-lockup">
+        <span class="logo-mark">&#10003;</span><span class="logo-word">Vibe-Check</span>
+      </td>
+      <td class="hdr-label">Security Report</td>
+    </tr>
+  </table>
+  <div class="rule"></div>
+
+  <h1 class="report-url">{{ url }}</h1>
+  <div class="meta mono">scan {{ scan.id }} &nbsp;·&nbsp; {{ scan.scan_type }} mode &nbsp;·&nbsp; generated {{ generated_at }}</div>
+
+  <table class="grade">
+    <tr>
+      <td style="width: 108px;">
+        <div class="grade-box">
+          <div class="grade-letter" style="color: {{ gcolor }};">{{ scan.grade or '—' }}</div>
+          <div class="grade-caption">Grade</div>
+        </div>
+      </td>
+      <td class="grade-side">
+        <div class="score-line">Score <b>{{ scan.score if scan.score is not none else '—' }}</b>/100 &nbsp;·&nbsp; {{ issues|length }} issue{{ '' if issues|length == 1 else 's' }} · {{ passes|length }} passed</div>
+        <div class="chips">
+          {% if crit %}<span class="chip c-critical"><b>{{ crit }}</b> critical</span>{% endif %}
+          {% if med %}<span class="chip c-medium"><b>{{ med }}</b> medium</span>{% endif %}
+          {% if low %}<span class="chip c-low"><b>{{ low }}</b> low</span>{% endif %}
+          {% if info %}<span class="chip c-info"><b>{{ info }}</b> info</span>{% endif %}
+          <span class="chip c-pass"><b>{{ passes|length }}</b> passed</span>
+        </div>
+      </td>
+    </tr>
+  </table>
 
   <h2>Issues ({{ issues|length }})</h2>
   {% if issues %}
     {% for f in issues %}
-    <div class="finding">
-      <div class="finding-title"><span class="badge {{ f.severity }}">{{ f.severity }}</span>{{ f.title }}</div>
+    <div class="finding s-{{ f.severity }}">
+      <div class="finding-title"><span class="sev {{ f.severity }}">{{ f.severity }}</span><span class="t">{{ f.title }}</span></div>
       {% if f.description %}<div class="field">{{ f.description }}</div>{% endif %}
-      {% if f.what_we_did %}<div class="field"><b>What we did:</b> {{ f.what_we_did }}</div>{% endif %}
-      {% if f.remediation %}<div class="field"><b>Remediation:</b> {{ f.remediation }}</div>{% endif %}
+      {% if f.what_we_did %}<div class="field"><span class="lbl">What we did</span>{{ f.what_we_did }}</div>{% endif %}
+      {% if f.remediation %}<div class="field"><span class="lbl">Remediation</span>{{ f.remediation }}</div>{% endif %}
     </div>
     {% endfor %}
   {% else %}
-    <p>No issues found.</p>
+    <div class="empty">No issues found in this scan.</div>
   {% endif %}
 
   <h2>What's working ({{ passes|length }})</h2>
   {% if passes %}
     {% for f in passes %}
-    <div class="finding">
-      <div class="finding-title"><span class="badge pass">pass</span>{{ f.title }}</div>
+    <div class="finding s-pass">
+      <div class="finding-title"><span class="sev pass">pass</span><span class="t">{{ f.title }}</span></div>
       {% if f.description %}<div class="field">{{ f.description }}</div>{% endif %}
     </div>
     {% endfor %}
   {% else %}
-    <p>No passing checks recorded.</p>
+    <div class="empty">No passing checks recorded.</div>
   {% endif %}
 
-  <div class="footer">Generated by Vibe-Check. This report reflects automated checks at the time of the scan and is not a guarantee of security.</div>
+  <div class="footer">
+    Generated by Vibe-Check &mdash; automated security auditing for vibe-coded apps.
+    This report reflects automated checks at the time of the scan and is not a guarantee of security.
+    Findings are stored as assessments, not copies of your data.
+  </div>
 </body>
 </html>
