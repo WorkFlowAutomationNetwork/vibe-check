@@ -1,0 +1,204 @@
+/* Roadmap page — brutalist kanban board, matches the app design system. */
+
+.rm-hero {
+  padding: 4px 0 24px;
+  border-bottom: 1.5px solid var(--line);
+  margin-bottom: 26px;
+}
+.rm-eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+.rm-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(30px, 4.2vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+  margin-top: 8px;
+}
+.rm-sub {
+  color: var(--ink-soft);
+  font-size: 15px;
+  max-width: 62ch;
+  margin-top: 10px;
+}
+.rm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.rm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+}
+.rm-chip .rm-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  display: inline-block;
+}
+.rm-chip-live .rm-dot { background: var(--lime); }
+.rm-chip-next .rm-dot { background: var(--violet); }
+.rm-chip-planned .rm-dot { background: var(--bg-deep); }
+.rm-chip-exploring .rm-dot { background: var(--warn); }
+
+/* Board */
+.rm-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .rm-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .rm-board { grid-template-columns: 1fr; }
+}
+
+.rm-col {
+  background: var(--bg-sub);
+  border: 1.5px solid var(--line-strong);
+  border-top: 5px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 16px 14px;
+}
+.rm-col-live { border-top-color: var(--lime-deep); }
+.rm-col-next { border-top-color: var(--violet); }
+.rm-col-planned { border-top-color: var(--ink-mute); }
+.rm-col-exploring { border-top-color: var(--warn); }
+
+.rm-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rm-col-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+.rm-count {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+}
+.rm-col-blurb {
+  color: var(--ink-mute);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 6px 0 14px;
+}
+.rm-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Cards — reuse .card-interactive shadow behaviour, tighter shadow here */
+.rm-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 13px 14px 14px;
+  box-shadow: var(--shadow-brut-sm);
+}
+.rm-card.card-interactive:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--violet);
+}
+.rm-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.rm-cat {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--bg-sub);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+}
+.rm-status-glyph {
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-mute);
+}
+.rm-col-live .rm-status-glyph { color: var(--lime-deep); }
+.rm-col-next .rm-status-glyph { color: var(--violet); }
+.rm-col-planned .rm-status-glyph { color: var(--ink-mute); }
+.rm-col-exploring .rm-status-glyph { color: var(--warn); }
+
+.rm-card-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.22;
+}
+.rm-card-desc {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+/* Footer CTA */
+.rm-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px 24px;
+  margin-top: 28px;
+  padding: 20px 22px;
+  background: var(--violet-soft);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-brut);
+}
+.rm-cta-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+.rm-cta-desc {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-top: 4px;
+  max-width: 62ch;
+}
