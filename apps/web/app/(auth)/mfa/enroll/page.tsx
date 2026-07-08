@@ -151,10 +151,11 @@ export default function MfaEnrollPage() {
         <>
           {qr && (
             <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 12px' }}>
-              {/* qr_code is an SVG string; render as a data URI per the Supabase API. */}
+              {/* Supabase returns totp.qr_code as a complete data: URI (data:image/svg+xml,…),
+                  so it is used directly as the src — wrapping it again double-encodes it. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`data:image/svg+xml;utf-8,${encodeURIComponent(qr)}`}
+                src={qr}
                 alt="TOTP QR code"
                 width={180}
                 height={180}
