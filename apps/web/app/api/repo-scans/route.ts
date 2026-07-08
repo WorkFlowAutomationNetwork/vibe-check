@@ -29,6 +29,20 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Repo scanning is a paid entitlement (Starter one-off or Monitor). Enforce it
+  // at scan time too, not just at connect time — otherwise an already-connected
+  // repo could still be scanned after a Starter window lapses back to Free.
+  const { data: entitlements } = await supabase
+    .from('my_entitlements')
+    .select('can_integrations')
+    .maybeSingle()
+  if (!entitlements?.can_integrations) {
+    return NextResponse.json(
+      { error: 'Repo scanning requires a one-time scan or the Monitor plan.' },
+      { status: 403 },
+    )
+  }
+
   const parsed = EnqueueSchema.safeParse(await request.json())
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
