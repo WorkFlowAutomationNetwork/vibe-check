@@ -88,13 +88,13 @@ export default async function BillingPage() {
             )}
             <div className="pactions">
               {plan === 'free' && (
-                <Link href="/api/billing/checkout?plan=starter" className="btn btn-lime">Purchase one-time scan</Link>
+                <a href="/api/billing/checkout?plan=starter" className="btn btn-lime">Purchase one-time scan</a>
               )}
               {plan === 'starter' && (
-                <Link href="/api/billing/checkout?plan=monitor" className="btn btn-lime">↑ Upgrade to Monitor</Link>
+                <a href="/api/billing/checkout?plan=monitor" className="btn btn-lime">↑ Upgrade to Monitor</a>
               )}
               {plan === 'monitor' && (
-                <Link href="/api/billing/portal" className="btn btn-outline">Manage subscription</Link>
+                <a href="/api/billing/portal" className="btn btn-outline">Manage subscription</a>
               )}
             </div>
           </div>
@@ -251,19 +251,19 @@ export default async function BillingPage() {
             <div>
               {plan === 'free'
                 ? <button className="current-btn">current plan</button>
-                : <Link href="/api/billing/portal" className="upgrade-btn">Downgrade to Free</Link>}
+                : <a href="/api/billing/portal" className="upgrade-btn">Downgrade to Free</a>}
             </div>
             <div>
               {plan === 'starter'
                 ? <button className="current-btn">current plan</button>
-                : <Link href="/api/billing/checkout?plan=starter" className="upgrade-btn">
+                : <a href="/api/billing/checkout?plan=starter" className="upgrade-btn">
                     {plan === 'free' ? 'Purchase one-time scan →' : 'Buy a one-off scan'}
-                  </Link>}
+                  </a>}
             </div>
             <div>
               {plan === 'monitor'
                 ? <button className="current-btn">current plan</button>
-                : <Link href="/api/billing/checkout?plan=monitor" className="upgrade-btn">Upgrade to Monitor →</Link>}
+                : <a href="/api/billing/checkout?plan=monitor" className="upgrade-btn">Upgrade to Monitor →</a>}
             </div>
           </div>
         </div>
