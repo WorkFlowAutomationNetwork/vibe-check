@@ -3,16 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 export const COOKIE_NAME = 'vibe_prelaunch'
 const TOKEN_MARKER = 'vibe-check-prelaunch-v1'
 
-const EXEMPT_PREFIXES = [
-  '/prelaunch',
-  '/api/prelaunch',
-  '/api/billing',
-  '/api/webhooks',
-  '/api/scans',
-  '/api/repo-scans',
-  '/api/integrations',
-  '/api/auth',
-  '/auth',
+// The lock guards only these prefixes — the rest of the site stays publicly
+// browsable pre-launch. Testers unlock sign-up with the prelaunch password.
+const GUARDED_PREFIXES = [
+  '/sign-up',
 ]
 
 export function isLockEngaged(): boolean {
@@ -23,8 +17,8 @@ export function getConfiguredPassword(): string {
   return process.env.PRELAUNCH_PASSWORD ?? ''
 }
 
-export function isExemptPath(pathname: string): boolean {
-  return EXEMPT_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+export function isGuardedPath(pathname: string): boolean {
+  return GUARDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }
 
 // Length-independent compare. Reveals only length, which is acceptable here.
@@ -67,7 +61,7 @@ export async function verifyToken(token: string | undefined, password: string): 
 export async function prelaunchGate(request: NextRequest): Promise<NextResponse | null> {
   if (!isLockEngaged()) return null
   const { pathname } = request.nextUrl
-  if (isExemptPath(pathname)) return null
+  if (!isGuardedPath(pathname)) return null
 
   const token = request.cookies.get(COOKIE_NAME)?.value
   if (await verifyToken(token, getConfiguredPassword())) return null

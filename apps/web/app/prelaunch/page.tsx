@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-export const metadata = { title: 'Coming soon' }
+export const metadata = { title: 'Sign-ups coming soon' }
 
 type SearchParams = { error?: string; notify?: string }
 
@@ -32,8 +32,8 @@ export default function PrelaunchPage({ searchParams }: { searchParams: SearchPa
         <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--violet-deep)', letterSpacing: '0.08em', margin: 0 }}>
           VIBE-CHECK
         </p>
-        <h1 style={{ fontSize: '28px', margin: '8px 0 4px' }}>Coming soon</h1>
-        <p style={{ color: 'var(--ink-soft)', marginTop: 0 }}>Developer access only.</p>
+        <h1 style={{ fontSize: '28px', margin: '8px 0 4px' }}>Sign-ups coming soon</h1>
+        <p style={{ color: 'var(--ink-soft)', marginTop: 0 }}>Developer access only for now.</p>
 
         <form action="/api/prelaunch/unlock" method="post">
           <input style={input} type="password" name="password" placeholder="Access password" autoComplete="off" required />

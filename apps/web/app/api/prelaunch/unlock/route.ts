@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   const token = await signToken(configured)
-  const res = NextResponse.redirect(new URL('/', origin), { status: 303 })
+  const res = NextResponse.redirect(new URL('/sign-up', origin), { status: 303 })
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: true,

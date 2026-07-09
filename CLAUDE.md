@@ -388,7 +388,7 @@ REDIS_URL=                          # redis://...
 SCANNER_API_URL=                    # Internal URL of scanner service
 SCANNER_INTERNAL_KEY=               # Shared secret for web→scanner auth
 RESEND_API_KEY=
-PRELAUNCH_LOCK_ENABLED=             # true locks the whole site behind a coming-soon password wall
+PRELAUNCH_LOCK_ENABLED=             # true locks /sign-up behind the prelaunch password; the rest of the site is publicly browsable
 PRELAUNCH_PASSWORD=                 # shared dev/tester password; required when PRELAUNCH_LOCK_ENABLED=true
 
 # apps/scanner

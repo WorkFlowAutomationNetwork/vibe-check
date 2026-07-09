@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
-  COOKIE_NAME, isLockEngaged, getConfiguredPassword, isExemptPath,
+  COOKIE_NAME, isLockEngaged, getConfiguredPassword, isGuardedPath,
   constantTimeEqual, signToken, verifyToken,
 } from './gate'
 
@@ -28,13 +28,13 @@ describe('prelaunch gate primitives', () => {
     expect(getConfiguredPassword()).toBe('hunter2')
   })
 
-  it('exempts the allowlisted prefixes and their subpaths, nothing else', () => {
-    for (const p of ['/prelaunch', '/api/prelaunch/unlock', '/api/billing/stripe-webhook',
-      '/api/webhooks/vercel', '/api/scans', '/api/repo-scans', '/api/auth/callback', '/auth/confirm']) {
-      expect(isExemptPath(p)).toBe(true)
+  it('guards only sign-up and its subpaths, nothing else', () => {
+    for (const p of ['/sign-up', '/sign-up/']) {
+      expect(isGuardedPath(p)).toBe(true)
     }
-    for (const p of ['/', '/dashboard', '/sign-in', '/api/badge/x', '/prelaunchx']) {
-      expect(isExemptPath(p)).toBe(false)
+    for (const p of ['/', '/dashboard', '/sign-in', '/api/badge/x', '/report/abc/public',
+      '/prelaunch', '/api/prelaunch/unlock', '/sign-upx']) {
+      expect(isGuardedPath(p)).toBe(false)
     }
   })
 
@@ -82,36 +82,38 @@ describe('prelaunchGate(request)', () => {
   }
 
   it('returns null when the lock is off', async () => {
-    expect(await prelaunchGate(req('/dashboard'))).toBeNull()
+    expect(await prelaunchGate(req('/sign-up'))).toBeNull()
   })
 
-  it('rewrites to /prelaunch when locked with no cookie on a guarded path', async () => {
+  it('rewrites to /prelaunch when locked with no cookie on sign-up', async () => {
     process.env.PRELAUNCH_LOCK_ENABLED = 'true'
     process.env.PRELAUNCH_PASSWORD = 'pw'
-    const res = await prelaunchGate(req('/dashboard'))
+    const res = await prelaunchGate(req('/sign-up'))
     expect(res).not.toBeNull()
     expect(res!.headers.get('x-middleware-rewrite')).toContain('/prelaunch')
   })
 
-  it('returns null for exempt paths even when locked', async () => {
+  it('returns null for the rest of the site even when locked', async () => {
     process.env.PRELAUNCH_LOCK_ENABLED = 'true'
     process.env.PRELAUNCH_PASSWORD = 'pw'
-    expect(await prelaunchGate(req('/api/billing/stripe-webhook'))).toBeNull()
-    expect(await prelaunchGate(req('/prelaunch'))).toBeNull()
+    expect(await prelaunchGate(req('/'))).toBeNull()
+    expect(await prelaunchGate(req('/dashboard'))).toBeNull()
+    expect(await prelaunchGate(req('/sign-in'))).toBeNull()
+    expect(await prelaunchGate(req('/api/badge/x/image'))).toBeNull()
   })
 
   it('returns null when locked with a valid cookie', async () => {
     process.env.PRELAUNCH_LOCK_ENABLED = 'true'
     process.env.PRELAUNCH_PASSWORD = 'pw'
     const token = await sign('pw')
-    expect(await prelaunchGate(req('/dashboard', token))).toBeNull()
+    expect(await prelaunchGate(req('/sign-up', token))).toBeNull()
   })
 
   it('rewrites when locked with a stale cookie from an old password', async () => {
     process.env.PRELAUNCH_LOCK_ENABLED = 'true'
     process.env.PRELAUNCH_PASSWORD = 'new-pw'
     const stale = await sign('old-pw')
-    const res = await prelaunchGate(req('/dashboard', stale))
+    const res = await prelaunchGate(req('/sign-up', stale))
     expect(res!.headers.get('x-middleware-rewrite')).toContain('/prelaunch')
   })
 })
