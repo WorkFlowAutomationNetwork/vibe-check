@@ -98,7 +98,7 @@ export default function TrustPage() {
 
       <footer>
         <div className="container row">
-          <div>© 2026 Vibe-Check · independently funded · made in a kitchen</div>
+          <div>© 2026 Vibe-Check · independently funded · made in a kitchen · Built by <a href="https://workflowautomationnetwork.com.au" target="_blank" rel="noopener">WorkFlow Automation Network</a></div>
           <div className="links">
             <Link href="/trust">Trust</Link>
             <Link href="/terms">Terms</Link>
