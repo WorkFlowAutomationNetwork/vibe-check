@@ -9,8 +9,8 @@ function render(searchParams: Record<string, string | undefined> = {}) {
 describe('Prelaunch gate page', () => {
   it('shows the coming-soon message and both forms', () => {
     const html = render()
-    expect(html).toContain('Sign-ups coming soon')
-    expect(html).toContain('Developer access only for now')
+    expect(html).toContain('Coming soon')
+    expect(html).toContain('Developer access only')
     expect(html).toContain('action="/api/prelaunch/unlock"')
     expect(html).toContain('action="/api/prelaunch/notify"')
     expect(html).toContain('name="password"')

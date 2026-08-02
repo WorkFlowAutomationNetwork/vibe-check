@@ -4,6 +4,27 @@
 
 ---
 
+## ⛔ PROJECT PAUSED — 2026-08-03
+
+**The scanner is not deployed anywhere.** All Fly.io infrastructure was destroyed on
+2026-08-03 to stop ~$42/month of always-on compute while the project is on hold: the
+`vibe-check-scanner` app (4 machines, 7 secrets, dedicated IPv6) and the `vibe-check-redis`
+managed Redis are both gone, and the Fly account is empty.
+
+**Scans cannot run.** Anything in this file describing the scanner as "deployed" or "live"
+describes how it *was* configured and how it *should* be rebuilt — not current reality. The
+scanner code in `apps/scanner/` is untouched and still passes its tests; only the hosting was
+removed.
+
+**To bring it back, read [`apps/scanner/FLY_DEPLOYMENT.md`](./apps/scanner/FLY_DEPLOYMENT.md)** —
+the complete teardown inventory and restore runbook (secret sources, deploy gotchas, region
+constraints, verification steps). It is tracked in git and contains no secret values.
+
+The site itself is walled: `prelaunchGate` again blocks the **whole site** behind the
+coming-soon page (exempting `/api/badge` so existing badge embeds keep rendering).
+
+---
+
 ## Local-only development docs
 
 `PROJECT_STATUS.md` and everything under `docs/` (superpowers plans/specs, manual QA
@@ -388,7 +409,7 @@ REDIS_URL=                          # redis://...
 SCANNER_API_URL=                    # Internal URL of scanner service
 SCANNER_INTERNAL_KEY=               # Shared secret for web→scanner auth
 RESEND_API_KEY=
-PRELAUNCH_LOCK_ENABLED=             # true locks /sign-up behind the prelaunch password; the rest of the site is publicly browsable
+PRELAUNCH_LOCK_ENABLED=             # true walls the whole site behind the prelaunch password; /api/badge + webhook/auth callbacks stay public
 PRELAUNCH_PASSWORD=                 # shared dev/tester password; required when PRELAUNCH_LOCK_ENABLED=true
 
 # apps/scanner

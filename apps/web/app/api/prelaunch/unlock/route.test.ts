@@ -14,11 +14,11 @@ describe('POST /api/prelaunch/unlock', () => {
     })
   }
 
-  it('sets the cookie and redirects to sign-up on the correct password', async () => {
+  it('sets the cookie and redirects to the site root on the correct password', async () => {
     const { POST } = await import('./route')
     const res = await POST(post('correct-horse'))
     expect(res.status).toBe(303)
-    expect(res.headers.get('location')).toContain('/sign-up')
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/')
     expect(res.headers.get('set-cookie')).toContain('vibe_prelaunch=')
     expect(res.headers.get('set-cookie')).toContain('HttpOnly')
   })
