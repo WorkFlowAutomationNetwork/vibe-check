@@ -294,16 +294,27 @@ and `CLAUDE.md`.
 
 ## 6. Loose ends created by the teardown
 
-- **Any scan sitting in `pending` or `running` in Supabase is now orphaned.**
-  Its Celery job died with the Redis instance and no worker will ever finish it,
-  so it will show as a permanent spinner. Sweep those rows to `failed` before
-  reopening the site to users. This is invisible for now because the site is
-  behind the full prelaunch wall.
+- **No orphaned scans — checked 2026-08-03, nothing to clean up.** A scan left
+  `pending` or `running` would have been stranded forever once Redis died, since
+  no worker exists to finish it. Verified directly against prod: all 10 rows in
+  `scans` and all 6 in `repo_scans` are `completed`. Last scan activity was
+  2026-07-09. Nothing was swept because nothing needed sweeping. If scans are
+  ever run again without the scanner up, re-check this before reopening the site.
 
 - **Badges lapse naturally.** Issued badges are 30-day and stored in Supabase;
   the web app serves badge images from the DB, so existing badges keep rendering
   until they expire on their own. No new badges can be issued while the scanner
   is down, since issuance happens in `jobs/tasks.py` on active/deep completion.
+  At teardown: 6 badges, 4 `lapsed`, 2 `active` (expiring 2026-07-20 and
+  2026-08-08).
+
+  One of those `active` rows was **already past its `expires_at`** and is stored
+  that way — the stored `status` column is not self-updating. This is cosmetic,
+  not a bug: both the `badge_status` view (`effective_status`) and
+  `app/api/badge/[token]/image/route.ts` derive lapse from `expires_at` at read
+  time. Confirmed live 2026-08-03 — the expired-but-`active` badge renders with
+  `line-through` (lapsed styling) while the genuinely active one does not. Do
+  not "fix" these rows by bulk-updating `status`; nothing reads it directly.
 
 - **`FLY_API_TOKEN` in Vercel is now inert.** The admin infra-cost panel
   (`/api/admin/infra-cost`, `components/admin/InfraCostPanel.tsx`) queries
